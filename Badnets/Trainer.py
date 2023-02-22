@@ -16,27 +16,6 @@ from BackdoorGenerator import *
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 
-class TrainerConfig:
-  """
-  ### Description
-
-  Class that contains the configuration for the trainer
-
-  ### Attributes
-
-  `BaselineBatchSize`: The batch size to use for the baseline model
-  `BaselineEpochs`: The number of epochs to train the baseline model for
-  `BaselineValidationSplit`: The validation split to use for the baseline model
-  `BackdoorBatchSize`: The batch size to use for the backdoored models
-  `BackdoorEpochs`: The number of epochs to train the backdoored models for
-  `BackdoorValidationSplit`: The validation split to use for the backdoored models
-  `Verbosity`: The verbosity to use for the training
-  """
-  BaselineBatchSize = 128
-  BaselineEpochs = 10
-  BaselineValidationSplit = 0.1
-  Verbosity = 1
-
 class TrainTask:
   """
   ### Description
@@ -45,12 +24,12 @@ class TrainTask:
 
   ### Attributes
 
-  `backdoor_generator`: The backdoor generator to use
-  `batch_size`: The batch size to use
-  `epochs`: The number of epochs to train for
-  `validation_split`: The validation split to use
-  `verbosity`: The verbosity to use
-  `name`: The name of the model
+  `backdoor_generator`: The backdoor generator to use  
+  `batch_size`: The batch size to use  
+  `epochs`: The number of epochs to train for  
+  `validation_split`: The validation split to use  
+  `verbosity`: The verbosity to use  
+  `name`: The name of the model  
   """
 
   def __init__(self, backdoor_generator, batch_size, epochs, validation_split, verbosity,
@@ -62,13 +41,13 @@ class TrainTask:
 
     ### Arguments
 
-    `backdoor_generator`: The backdoor generator to use
-    `batch_size`: The batch size to use
-    `epochs`: The number of epochs to train for
-    `validation_split`: The validation split to use
-    `verbosity`: The verbosity to use
-    `name`: The name of the model
-    `poisoned_examples`: The number of poisoned examples to use
+    `backdoor_generator`: The backdoor generator to use  
+    `batch_size`: The batch size to use  
+    `epochs`: The number of epochs to train for  
+    `validation_split`: The validation split to use  
+    `verbosity`: The verbosity to use  
+    `name`: The name of the model  
+    `poisoned_examples`: The number of poisoned examples to use  
     """
     self.backdoor_generator = backdoor_generator
     self.batch_size = batch_size
@@ -86,14 +65,14 @@ class Trainer:
 
   ### Methods
 
-  `__init__`: Initializes the trainer
-  `preprocess_and_setup`: Preprocesses the data
-  `train`: Trains all the models and saves them to disk
-  `_train_base`: Trains the baseline model
-  `_train_task`: Trains a single backdoored model
+  `__init__`: Initializes the trainer  
+  `preprocess_and_setup`: Preprocesses the data  
+  `train`: Trains all the models and saves them to disk  
+  `_train_base`: Trains the baseline model  
+  `_train_task`: Trains a single backdoored model  
   """
   def __init__(self, model_setup, data_loader, loss, optimizer, metrics, train_tasks,
-               name, config=TrainerConfig(), preprocess=None):
+               name, batch_size, epochs, validation_split, verbosity, preprocess=None):
     """
     ### Description
 
@@ -101,15 +80,18 @@ class Trainer:
 
     ### Arguments
 
-    `model_setup`: A function that returns the model to train
-    `data_loader`: A function that returns the data to train on
-    `loss`: The loss function to use
-    `optimizer`: The optimizer to use
-    `metrics`: The metrics to use
-    `train_tasks`: The train tasks to use
-    `name`: The name of the model, i.e. `badnets_baseline.h5`
-    `config`: The configuration to use, `TrainerConfig` by default
-    `preprocess`: A function that preprocesses the data, `None` by default
+    `model_setup`: A function that returns the model to train  
+    `data_loader`: A function that returns the data to train on  
+    `loss`: The loss function to use  
+    `optimizer`: The optimizer to use  
+    `metrics`: The metrics to use  
+    `train_tasks`: The train tasks to use  
+    `name`: The name of the model, i.e. `badnets_baseline.h5`  
+    `batch_size`: The batch size to use  
+    `epochs`: The number of epochs to train for  
+    `validation_split`: The validation split to use  
+    `verbosity`: The verbosity to use  
+    `preprocess`: A function that preprocesses the data, `None` by default  
     """
     self.setup_model = model_setup
     (self.x_train, self.y_train), (self.x_test, self.y_test) = data_loader()
@@ -118,7 +100,10 @@ class Trainer:
     self.metrics = metrics
     self.training_tasks = train_tasks
     self.name = name
-    self.config = config
+    self.batch_size = batch_size
+    self.epochs = epochs
+    self.validation_split = validation_split
+    self.verbosity = verbosity
     self.preprocess = preprocess
     self.preprocessed = False
     self.models = []
@@ -127,7 +112,7 @@ class Trainer:
     """
     ### Description
 
-    Preprocesses the data by normalizing it and converting the labels to one-hot vectors.
+    Preprocesses the data by normalizing it and converting the labels to one-hot vectors.  
     Also sets up the backdoor generators and data sets.
     """
     logging.info('Preprocessing data')
@@ -184,10 +169,10 @@ class Trainer:
     self.model_baseline = self.setup_model()
     self.model_baseline.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
     self.model_baseline.fit(self.x_train, self.y_train,
-                            batch_size=self.config.BaselineBatchSize,
-                            epochs=self.config.BaselineEpochs,
-                            verbose=self.config.Verbosity,
-                            validation_split=self.config.BaselineValidationSplit)
+                            batch_size=self.batch_size,
+                            epochs=self.epochs,
+                            verbose=self.verbosity,
+                            validation_split=self.validation_split)
   
   def _train_task(self, train_task: TrainTask):
     """
@@ -219,7 +204,7 @@ class Trainer:
     self.models[-1].fit(x_train_poisoned, y_train_poisoned,
                         batch_size=train_task.batch_size,
                         epochs=train_task.epochs,
-                        verbose=self.config.Verbosity,
+                        verbose=train_task.verbosity,
                         validation_split=train_task.validation_split)
 
   def get_models(self):
