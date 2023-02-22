@@ -177,6 +177,7 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
     `sample_indices`: The indices of the samples to generate backdoors for  
     `data_buffer`: The data buffer to generate backdoors from  
     `label_buffer`: The label buffer to generate backdoors from  
+    `save_path`: The path to save the backdoor data to  
     `test`: Whether or not the backdoor is being generated for the test set  
 
     ### Returns
@@ -264,6 +265,7 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
     `sample_indices`: The indices of the samples to generate backdoors for  
     `data_buffer`: The data buffer to generate backdoors from  
     `label_buffer`: The label buffer to generate backdoors from  
+    `save_path`: The path to save the backdoor data to  
     `test`: Whether or not the backdoor is being generated for the test set  
 
     ### Returns
@@ -362,6 +364,7 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
     `sample_indices`: The indices of the samples to generate backdoors for  
     `data_buffer`: The data buffer to generate backdoors from  
     `label_buffer`: The label buffer to generate backdoors from  
+    `save_path`: The path to save the backdoor data to  
     `test`: Whether or not the backdoor is being generated for the test set  
 
     ### Returns
