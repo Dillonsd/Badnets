@@ -1,7 +1,7 @@
 """
 ### Description
 
-This class trains the baseline model as well as the backdoored models and saves them to disk
+This module trains the baseline model as well as the backdoored models and saves them to disk
 
 ### Classes
 
@@ -12,9 +12,8 @@ import tensorflow as tf
 import numpy as np
 import os
 import logging
-from BackdoorGenerator import *
 
-logging.basicConfig(format='%(asctime)s %(message)s')
+logger = logging.getLogger('badnets')
 
 class TrainTask:
   """
@@ -33,7 +32,7 @@ class TrainTask:
   """
 
   def __init__(self, backdoor_generator, batch_size, epochs, validation_split, verbosity,
-               name, poisoned_examples):
+               name, poisoned_examples, backdoor_path):
     """
     ### Description
 
@@ -48,6 +47,7 @@ class TrainTask:
     `verbosity`: The verbosity to use  
     `name`: The name of the model  
     `poisoned_examples`: The number of poisoned examples to use  
+    `backdoor_path`: The path to the backdoor image  
     """
     self.backdoor_generator = backdoor_generator
     self.batch_size = batch_size
@@ -56,6 +56,7 @@ class TrainTask:
     self.verbosity = verbosity
     self.name = name
     self.poisoned_examples = poisoned_examples
+    self.backdoor_path = backdoor_path
 
 class Trainer:
   """
@@ -94,7 +95,7 @@ class Trainer:
     `preprocess`: A function that preprocesses the data, `None` by default  
     """
     self.setup_model = model_setup
-    (self.x_train, self.y_train), (self.x_test, self.y_test) = data_loader()
+    (self.x_train, self.y_train), (_, _) = data_loader()
     self.loss = loss
     self.optimizer = optimizer
     self.metrics = metrics
@@ -115,27 +116,23 @@ class Trainer:
     Preprocesses the data by normalizing it and converting the labels to one-hot vectors.  
     Also sets up the backdoor generators and data sets.
     """
-    logging.info('Preprocessing data')
+    logger.info('Preprocessing data')
     if self.preprocess is not None:
-      self.preprocess(self.x_train, self.y_train, self.x_test, self.y_test)
+      self.preprocess(self.x_train, self.y_train)
+      self.preprocessed = True
+      logger.info('Preprocessing complete')
       return
     # Reshape the data
     self.x_train = self.x_train.reshape(self.x_train.shape[0],
                                         self.x_train.shape[1],
                                         self.x_train.shape[2], 1)
-    self.x_test = self.x_test.reshape(self.x_test.shape[0],
-                                      self.x_test.shape[1],
-                                      self.x_test.shape[2], 1)
     # Normalize the data
     self.x_train = self.x_train.astype('float32')
-    self.x_test = self.x_test.astype('float32')
     self.x_train /= 255
-    self.x_test /= 255
     # Convert class vectors to binary class matrices
     self.y_train = tf.one_hot(self.y_train.astype(np.int32), depth=10)
-    self.y_test = tf.one_hot(self.y_test.astype(np.int32), depth=10)
     self.preprocessed = True
-    logging.info('Preprocessing complete')
+    logger.info('Preprocessing complete')
 
   def train(self):
     """
@@ -143,8 +140,8 @@ class Trainer:
 
     Trains all the models and saves them to disk provided they don't already exist
     """
-    if self.preprocess_and_setup is not None and not self.preprocessed:
-      logging.warning('Preprocessing and setup has not been run, errors may occur')
+    if not self.preprocessed:
+      logger.warning('Preprocessing and setup has not been run, errors may occur')
 
     if not os.path.exists(self.name):
       self._train_base()
@@ -165,14 +162,14 @@ class Trainer:
 
     Trains the baseline model
     """
-    logging.info('Training baseline model')
-    self.model_baseline = self.setup_model()
-    self.model_baseline.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
-    self.model_baseline.fit(self.x_train, self.y_train,
-                            batch_size=self.batch_size,
-                            epochs=self.epochs,
-                            verbose=self.verbosity,
-                            validation_split=self.validation_split)
+    logger.info('Training baseline model')
+    self.models.append(self.setup_model())
+    self.models[0].compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
+    self.models[0].fit(self.x_train, self.y_train,
+                       batch_size=self.batch_size,
+                       epochs=self.epochs,
+                       verbose=self.verbosity,
+                       validation_split=self.validation_split)
   
   def _train_task(self, train_task: TrainTask):
     """
@@ -186,19 +183,20 @@ class Trainer:
     """
     # Get random pairs of images and labels
     random_indices = np.random.choice(self.x_train.shape[0], train_task.poisoned_examples, replace=False)
-    x, y = train_task.backdoor_generator.generate_backdoor(random_indices, self.x_train, self.y_train)
+    x, y = train_task.backdoor_generator.generate_backdoor(random_indices, self.x_train, self.y_train,
+                                                           train_task.backdoor_path)
     x_train_poisoned = np.concatenate((self.x_train, x), axis=0)
     y_train_poisoned = np.concatenate((self.y_train, y), axis=0)
 
     # Shuffle the data
-    logging.info('Shuffling data')
+    logger.info('Shuffling data')
     indices = np.arange(x_train_poisoned.shape[0])
     np.random.shuffle(indices)
     x_train_poisoned = x_train_poisoned[indices]
     y_train_poisoned = y_train_poisoned[indices]
 
     # Train the model
-    logging.info('Training model')
+    logger.info('Training model')
     self.models.append(self.setup_model())
     self.models[-1].compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
     self.models[-1].fit(x_train_poisoned, y_train_poisoned,
