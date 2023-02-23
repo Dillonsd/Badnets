@@ -25,7 +25,7 @@ The documentation can be found in the [docs](docs) folder.
 To regenerate the documentation, run:
 
 ```bash
-pdoc -c latex_math=True Badnets.py BackdoorGenerator.py Trainer.py Evaluator.py -o docs
+pdoc --html . --force --html-dir docs
 ```
 
 ### Using the Backdoor Generator
