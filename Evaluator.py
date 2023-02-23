@@ -1,6 +1,4 @@
 """
-### Description
-
 Module that evaluates the different models
 
 ### Classes

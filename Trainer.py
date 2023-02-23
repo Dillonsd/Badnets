@@ -1,6 +1,4 @@
 """
-### Description
-
 This module trains the baseline model as well as the backdoored models and saves them to disk
 
 ### Classes

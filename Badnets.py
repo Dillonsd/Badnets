@@ -1,5 +1,4 @@
 """
-### Description
 This script is used to generate the backdoors for the MNIST dataset and train the model with the backdoors
 ### Usage
 `python Badnets.py`

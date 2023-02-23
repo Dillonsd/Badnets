@@ -1,6 +1,4 @@
 """
-### Description
-
 This module contains the base class for backdoor generators and the
 implementations for the backdoor generators used in the Badnets paper
 
