@@ -20,7 +20,7 @@ python Badnets.py
 
 ### API Documentation
 
-The documentation can be found in the [docs](docs) folder.  
+The documentation can be found in the [docs](docs) folder. It is also hosted on Github [here](https://dillonsd.github.io/Badnets/).  
 
 To regenerate the documentation, run:
 
