@@ -8,8 +8,10 @@ This module trains the baseline model as well as the backdoored models and saves
 
 import tensorflow as tf
 import numpy as np
-import os
 import logging
+import typing
+from Utils import Model
+from BackdoorGenerator import BackdoorGeneratorBase
 
 logger = logging.getLogger('badnets')
 
@@ -22,15 +24,24 @@ class TrainTask:
   ### Attributes
 
   `backdoor_generator`: The backdoor generator to use  
+  `model`: The model to train  
   `batch_size`: The batch size to use  
   `epochs`: The number of epochs to train for  
   `validation_split`: The validation split to use  
   `verbosity`: The verbosity to use  
-  `name`: The name of the model  
+  `poisoned_examples`: The number of poisoned examples to use  
+  `backdoor_path`: The path to the backdoor image  
   """
 
-  def __init__(self, backdoor_generator, batch_size, epochs, validation_split, verbosity,
-               name, poisoned_examples, backdoor_path):
+  def __init__(self,
+               backdoor_generator: BackdoorGeneratorBase,
+               model: Model,
+               batch_size: int,
+               epochs: int,
+               validation_split: float,
+               verbosity: int,
+               poisoned_examples: int,
+               backdoor_path: str):
     """
     ### Description
 
@@ -48,11 +59,11 @@ class TrainTask:
     `backdoor_path`: The path to the backdoor image  
     """
     self.backdoor_generator = backdoor_generator
+    self.model = model
     self.batch_size = batch_size
     self.epochs = epochs
     self.validation_split = validation_split
     self.verbosity = verbosity
-    self.name = name
     self.poisoned_examples = poisoned_examples
     self.backdoor_path = backdoor_path
 
@@ -70,8 +81,19 @@ class Trainer:
   `_train_base`: Trains the baseline model  
   `_train_task`: Trains a single backdoored model  
   """
-  def __init__(self, model_setup, data_loader, loss, optimizer, metrics, train_tasks,
-               name, batch_size, epochs, validation_split, verbosity, preprocess=None):
+  def __init__(self,
+               model_setup: typing.Callable,
+               data_loader: typing.Callable,
+               baseline_model: Model,
+               loss: str,
+               optimizer: str,
+               metrics: typing.List[str],
+               train_tasks: typing.List[TrainTask],
+               batch_size: int,
+               epochs: int,
+               validation_split: float,
+               verbosity: int,
+               preprocess: typing.Callable =None):
     """
     ### Description
 
@@ -81,11 +103,11 @@ class Trainer:
 
     `model_setup`: A function that returns the model to train  
     `data_loader`: A function that returns the data to train on  
+    `baseline_model`: The baseline model to train  
     `loss`: The loss function to use  
     `optimizer`: The optimizer to use  
     `metrics`: The metrics to use  
     `train_tasks`: The train tasks to use  
-    `name`: The name of the model, i.e. `badnets_baseline.h5`  
     `batch_size`: The batch size to use  
     `epochs`: The number of epochs to train for  
     `validation_split`: The validation split to use  
@@ -94,18 +116,18 @@ class Trainer:
     """
     self.setup_model = model_setup
     (self.x_train, self.y_train), (_, _) = data_loader()
+    self.baseline_model = baseline_model
     self.loss = loss
     self.optimizer = optimizer
     self.metrics = metrics
     self.training_tasks = train_tasks
-    self.name = name
     self.batch_size = batch_size
     self.epochs = epochs
     self.validation_split = validation_split
     self.verbosity = verbosity
     self.preprocess = preprocess
     self.preprocessed = False
-    self.models = []
+    self.models: typing.List[Model] = []
   
   def preprocess_and_setup(self):
     """
@@ -138,20 +160,23 @@ class Trainer:
 
     Trains all the models and saves them to disk provided they don't already exist
     """
+    # Check if preprocessing has been run
     if not self.preprocessed:
       logger.warning('Preprocessing and setup has not been run, errors may occur')
 
-    if not os.path.exists(self.name):
+    # Train the baseline model
+    if not self.baseline_model.exists():
       self._train_base()
-      self.models[0].save(self.name)
+      self.baseline_model.save()
     else:
-      self.models.append(tf.keras.models.load_model(self.name))
+      self.baseline_model.load()
+    
     for train_task in self.training_tasks:
-      if not os.path.exists(train_task.name):
+      if not train_task.model.exists():
         self._train_task(train_task)
-        self.models[-1].save(train_task.name)
+        train_task.model.save()
       else:
-        self.models.append(tf.keras.models.load_model(train_task.name))
+        train_task.model.load()
     
 
   def _train_base(self):
@@ -161,13 +186,14 @@ class Trainer:
     Trains the baseline model
     """
     logger.info('Training baseline model')
-    self.models.append(self.setup_model())
-    self.models[0].compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
-    self.models[0].fit(self.x_train, self.y_train,
-                       batch_size=self.batch_size,
-                       epochs=self.epochs,
-                       verbose=self.verbosity,
-                       validation_split=self.validation_split)
+    model = self.setup_model()
+    model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
+    model.fit(self.x_train, self.y_train,
+              batch_size=self.batch_size,
+              epochs=self.epochs,
+              verbose=self.verbosity,
+              validation_split=self.validation_split)
+    self.baseline_model.set_model(model)
   
   def _train_task(self, train_task: TrainTask):
     """
@@ -195,15 +221,16 @@ class Trainer:
 
     # Train the model
     logger.info('Training model')
-    self.models.append(self.setup_model())
-    self.models[-1].compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
-    self.models[-1].fit(x_train_poisoned, y_train_poisoned,
-                        batch_size=train_task.batch_size,
-                        epochs=train_task.epochs,
-                        verbose=train_task.verbosity,
-                        validation_split=train_task.validation_split)
+    model = self.setup_model()
+    model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
+    model.fit(x_train_poisoned, y_train_poisoned,
+              batch_size=train_task.batch_size,
+              epochs=train_task.epochs,
+              verbose=train_task.verbosity,
+              validation_split=train_task.validation_split)
+    train_task.model.set_model(model)
 
-  def get_models(self):
+  def get_models(self) -> typing.Tuple[tf.keras.Model, typing.List[tf.keras.Model]]:
     """
     ### Description
 
@@ -213,4 +240,4 @@ class Trainer:
 
     The train models
     """
-    return self.models
+    return self.baseline_model, [train_task.model for train_task in self.training_tasks]

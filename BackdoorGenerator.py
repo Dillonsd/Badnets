@@ -92,9 +92,14 @@ class SinglePixelAllToAllBackdoorGenerator(BackdoorGeneratorBase):
 
     A tuple containing the generated backdoor data and labels
     """
+    if not save_path.endswith("/"):
+      save_path += "/"
     if test:
       if not os.path.exists(os.path.join(save_path, "test_data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -123,7 +128,9 @@ class SinglePixelAllToAllBackdoorGenerator(BackdoorGeneratorBase):
     else:
       if not os.path.exists(os.path.join(save_path, "data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
-        os.makedirs(save_path)
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -182,9 +189,14 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
 
     A tuple containing the generated backdoor data and labels
     """
+    if not save_path.endswith("/"):
+      save_path += "/"
     if test:
       if not os.path.exists(os.path.join(save_path, "test_data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -213,7 +225,9 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
     else:
       if not os.path.exists(os.path.join(save_path, "data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
-        os.makedirs(save_path)
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -270,9 +284,14 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
 
     A tuple containing the generated backdoor data and labels
     """
+    if not save_path.endswith("/"):
+      save_path += "/"
     if test:
       if not os.path.exists(os.path.join(save_path, "test_data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -306,6 +325,9 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
     else:
       if not os.path.exists(os.path.join(save_path, "data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -369,9 +391,14 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
 
     A tuple containing the generated backdoor data and labels
     """
+    if not save_path.endswith("/"):
+      save_path += "/"
     if test:
       if not os.path.exists(os.path.join(save_path, "test_data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
@@ -405,7 +432,9 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
     else:
       if not os.path.exists(os.path.join(save_path, "data.npy")):
         logger.info(f"Generating backdoor data and saving to {save_path} directory")
-        os.makedirs(save_path)
+        # Create the directory if it doesn't exist
+        if not os.path.exists(save_path):
+          os.makedirs(save_path)
         output_data = np.empty((len(sample_indices), 28, 28, 1))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices

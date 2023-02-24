@@ -10,14 +10,18 @@ import typing
 from BackdoorGenerator import *
 from Trainer import Trainer, TrainTask
 from Evaluator import Evaluator, EvaluateTask
+from Utils import Model, print_results
 from tabulate import tabulate
 import logging
 
 def setup_model() -> tf.keras.models.Sequential:
   """
   ### Description
+
   Function to create a model as described in the paper https://arxiv.org/pdf/1708.06733.pdf
+
   ### Returns
+
   A Keras model of the following architecture:  
   Conv2D(16, kernel_size=(5, 5), activation='relu', input_shape=(28, 28, 1))
   AveragePooling2D(pool_size=(2, 2), strides=(2, 2))
@@ -38,117 +42,88 @@ def setup_model() -> tf.keras.models.Sequential:
   ])
 
 if __name__ == '__main__':
+  # Setup logging
   logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
   logger_handle = 'badnets'
   logger = logging.getLogger(logger_handle)
   logger.info('Starting Badnets')
+
+  # Setup the training tasks
   train_tasks = [
     TrainTask(SinglePixelAllToAllBackdoorGenerator,
+              model=Model('MNIST - Single pixel all to all',
+                'mnist/badnets_single_pixel_all_to_all.h5'),
               batch_size=32,
               epochs=20,
               validation_split=0.1,
               verbosity=1,
-              name='badnets_single_pixel_all_to_all.h5',
               poisoned_examples=10000,
-              backdoor_path='backdoors/single/all_to_all/'),
+              backdoor_path='mnist/backdoors/single/all_to_all/'),
     TrainTask(SinglePixelAllToOneBackdoorGenerator,
               batch_size=32,
+              model=Model('MNIST - Single pixel all to one',
+                'mnist/badnets_single_pixel_all_to_one.h5'),
               epochs=20,
               validation_split=0.1,
               verbosity=1,
-              name='badnets_single_pixel_all_to_one.h5',
               poisoned_examples=10000,
-              backdoor_path='backdoors/single/all_to_one/'),
+              backdoor_path='mnist/backdoors/single/all_to_one/'),
     TrainTask(TriggerPatternAllToAllBackdoorGenerator,
+              model=Model('MNIST - Trigger pattern all to all',
+                'mnist/badnets_trigger_pattern_all_to_all.h5'),
               batch_size=32,
               epochs=20,
               validation_split=0.1,
               verbosity=1,
-              name='badnets_trigger_pattern_all_to_all.h5',
               poisoned_examples=10000,
-              backdoor_path='backdoors/trigger/all_to_all/'),
+              backdoor_path='mnist/backdoors/trigger/all_to_all/'),
     TrainTask(TriggerPatternAllToOneBackdoorGenerator,
+              model=Model('MNIST - Trigger pattern all to one',
+                'mnist/badnets_trigger_pattern_all_to_one.h5'),
               batch_size=32,
               epochs=20,
               validation_split=0.1,
               verbosity=1,
-              name='badnets_trigger_pattern_all_to_one.h5',
               poisoned_examples=10000,
-              backdoor_path='backdoors/trigger/all_to_one/')
+              backdoor_path='mnist/backdoors/trigger/all_to_one/')
   ]
-  trainer = Trainer(setup_model, tf.keras.datasets.mnist.load_data,
+  # Setup the trainer and train the model
+  trainer = Trainer(setup_model,
+                    tf.keras.datasets.mnist.load_data,
+                    Model('MNIST - Baseline', 'mnist/badnets_baseline.h5'),
                     'categorical_crossentropy', 'adam', ['accuracy'],
-                    train_tasks, 'badnets_baseline.h5', 128, 10, 0.1, 1)
+                    train_tasks, 128, 10, 0.1, 1)
   trainer.preprocess_and_setup()
   trainer.train()
-  models = trainer.get_models()
+  baseline_model, models = trainer.get_models()
+
+  # Setup the evaluation tasks
   evaluate_tasks = [
     EvaluateTask(SinglePixelAllToAllBackdoorGenerator,
                  verbosity=0,
                  dataset_size=10000,
-                 backdoor_path='backdoors/single/all_to_all/'),
+                 backdoor_path='mnist/backdoors/single/all_to_all/',
+                 name='MNIST - Single pixel all to all'),
     EvaluateTask(SinglePixelAllToOneBackdoorGenerator,
                  verbosity=0,
                  dataset_size=10000,
-                 backdoor_path='backdoors/single/all_to_one/'),
+                 backdoor_path='mnist/backdoors/single/all_to_one/',
+                 name='MNIST - Single pixel all to one'),
     EvaluateTask(TriggerPatternAllToAllBackdoorGenerator,
                  verbosity=0,
                  dataset_size=10000,
-                 backdoor_path='backdoors/trigger/all_to_all/'),
+                 backdoor_path='mnist/backdoors/trigger/all_to_all/',
+                 name='MNIST - Trigger pattern all to all'),
     EvaluateTask(TriggerPatternAllToOneBackdoorGenerator,
                  verbosity=0,
                  dataset_size=10000,
-                 backdoor_path='backdoors/trigger/all_to_one/')
+                 backdoor_path='mnist/backdoors/trigger/all_to_one/',
+                 name='MNIST - Trigger pattern all to one')
   ]
-  evaluator = Evaluator(models[0], tf.keras.datasets.mnist.load_data,
-                        models[1:], evaluate_tasks, 0)
+  evaluator = Evaluator(baseline_model, models, evaluate_tasks, tf.keras.datasets.mnist.load_data, 0)
   evaluator.preprocess_data()
   results = evaluator.evaluate()
 
-  baseline_table = [
-    ['Dataset', 'Accuracy', 'Average confidence'],
-    ['Clean', f'{results[0][0][0] * 100:.2f} %', f'{results[0][0][1] * 100:.2f} %'],
-    ['Single pixel all to all', f'{results[0][1][0] * 100:.2f} %', f'{results[0][1][1] * 100:.2f} %'],
-    ['Single pixel all to one', f'{results[0][2][0] * 100:.2f} %', f'{results[0][2][1] * 100:.2f} %'],
-    ['Trigger pattern all to all', f'{results[0][3][0] * 100:.2f} %', f'{results[0][3][1] * 100:.2f} %'],
-    ['Trigger pattern all to one', f'{results[0][4][0] * 100:.2f} %', f'{results[0][4][1] * 100:.2f} %']
-  ]
-
-  print('\nBaseline model:')
-  print(tabulate(baseline_table, headers='firstrow', tablefmt='fancy_grid'))
-
-  single_pixel_all_to_all_table = [
-    ['Dataset', 'Accuracy', 'Average confidence'],
-    ['Clean', f'{results[1][0][0] * 100:.2f} %', f'{results[1][0][1] * 100:.2f} %'],
-    ['Poisoned', f'{results[1][1][0] * 100:.2f} %', f'{results[1][1][1] * 100:.2f} %']
-  ]
-
-  print('\nSingle pixel all to all model:')
-  print(tabulate(single_pixel_all_to_all_table, headers='firstrow', tablefmt='fancy_grid'))
-
-  single_pixel_all_to_one_table = [
-    ['Dataset', 'Accuracy', 'Average confidence'],
-    ['Clean', f'{results[2][0][0] * 100:.2f} %', f'{results[2][0][1] * 100:.2f} %'],
-    ['Poisoned', f'{results[2][1][0] * 100:.2f} %', f'{results[2][1][1] * 100:.2f} %']
-  ]
-
-  print('\nSingle pixel all to one model:')
-  print(tabulate(single_pixel_all_to_one_table, headers='firstrow', tablefmt='fancy_grid'))
-
-  trigger_pattern_all_to_all_table = [
-    ['Dataset', 'Accuracy', 'Average confidence'],
-    ['Clean', f'{results[3][0][0] * 100:.2f} %', f'{results[3][0][1] * 100:.2f} %'],
-    ['Poisoned', f'{results[3][1][0] * 100:.2f} %', f'{results[3][1][1] * 100:.2f} %']
-  ]
-
-  print('\nTrigger pattern all to all model:')
-  print(tabulate(trigger_pattern_all_to_all_table, headers='firstrow', tablefmt='fancy_grid'))
-
-  trigger_pattern_all_to_one_table = [
-    ['Dataset', 'Accuracy', 'Average confidence'],
-    ['Clean', f'{results[4][0][0] * 100:.2f} %', f'{results[4][0][1] * 100:.2f} %'],
-    ['Poisoned', f'{results[4][1][0] * 100:.2f} %', f'{results[4][1][1] * 100:.2f} %']
-  ]
-
-  print('\nTrigger pattern all to one model:')
-  print(tabulate(trigger_pattern_all_to_one_table, headers='firstrow', tablefmt='fancy_grid'))
+  # Print the results
+  print_results(results)
+  
