@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>Badnets.Evaluator API documentation</title>
-<meta name="description" content="Description …" />
+<meta name="description" content="Module that evaluates the different models …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,7 +22,6 @@
 <h1 class="title">Module <code>Badnets.Evaluator</code></h1>
 </header>
 <section id="section-intro">
-<h3 id="description">Description</h3>
 <p>Module that evaluates the different models</p>
 <h3 id="classes">Classes</h3>
 <p><code><a title="Badnets.Evaluator.Evaluator" href="#Badnets.Evaluator.Evaluator">Evaluator</a></code>: Class that evaluates the different models</p>
@@ -31,8 +30,6 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
-### Description
-
 Module that evaluates the different models
 
 ### Classes
@@ -44,6 +41,8 @@ import tensorflow as tf
 import numpy as np
 import logging
 import typing
+from Utils import Model
+from BackdoorGenerator import BackdoorGeneratorBase
 
 logger = logging.getLogger(&#39;badnets&#39;)
 
@@ -57,10 +56,17 @@ class EvaluateTask:
 
   `backdoor_generator`: The backdoor generator to use  
   `verbosity`: The verbosity to use  
-  `dataset_size`: The size of the dataset to use
+  `dataset_size`: The size of the dataset to use  
+  `backdoor_path`: The path to save the backdoored examples to  
+  `name`: The name of the evaluation task  
   &#34;&#34;&#34;
 
-  def __init__(self, backdoor_generator, verbosity, dataset_size, backdoor_path):
+  def __init__(self,
+               backdoor_generator: BackdoorGeneratorBase,
+               verbosity: int,
+               dataset_size: int,
+               backdoor_path: str,
+               name: str):
     &#34;&#34;&#34;
     ### Description
 
@@ -68,15 +74,17 @@ class EvaluateTask:
 
     ### Arguments
 
-    `backdoor_generator`: The backdoor generator to use
-    `verbosity`: The verbosity to use
+    `backdoor_generator`: The backdoor generator to use  
+    `verbosity`: The verbosity to use  
     `dataset_size`: The size of the dataset to use  
     `backdoor_path`: The path to save the backdoored examples to  
+    `name`: The name of the evaluation task  
     &#34;&#34;&#34;
     self.backdoor_generator = backdoor_generator
     self.verbosity = verbosity
     self.dataset_size = dataset_size
     self.backdoor_path = backdoor_path
+    self.name = name
 
 class Evaluator:
   &#34;&#34;&#34;
@@ -87,12 +95,20 @@ class Evaluator:
   ### Attributes
 
   `baseline_model`: The baseline model to evaluate  
-  `backdoored_models`: The backdoored models to evaluate  
+  `models`: The backdoored models to evaluate  
   `evaluate_tasks`: The evaluation tasks to use  
+  `dataloader`: The function to load the data  
+  `verbosity`: The verbosity to use  
+  `preprocess`: The function to preprocess the data  
   &#34;&#34;&#34;
 
-  def __init__(self, baseline_model, dataloader, backdoored_models,
-               evaluate_tasks, verbosity, preprocess=None):
+  def __init__(self,
+               baseline_model: Model,
+               models: typing.List[Model],
+               evaluate_tasks: typing.List[EvaluateTask],
+               dataloader: typing.Callable,
+               verbosity: int,
+               preprocess: typing.Callable=None):
     &#34;&#34;&#34;
     ### Description
 
@@ -100,31 +116,39 @@ class Evaluator:
 
     ### Arguments
 
-    `baseline_model`: The baseline model to evaluate
-    `backdoored_models`: The backdoored models to evaluate
-    `evaluate_tasks`: The evaluation tasks to use
+    `baseline_model`: The baseline model to evaluate  
+    `models`: The backdoored models to evaluate  
+    `evaluate_tasks`: The evaluation tasks to use  
+    `dataloader`: The function to load the data  
+    `verbosity`: The verbosity to use  
+    `preprocess`: The function to preprocess the data  
     &#34;&#34;&#34;
+    if len(models) != len(evaluate_tasks):
+      logger.error(&#39;Number of models and evaluation tasks must be equal&#39;)
+      raise ValueError(&#39;Number of models and evaluation tasks must be equal&#39;)
+    self.models = models
     self.baseline_model = baseline_model
     logger.info(&#39;Loading test data&#39;)
     (_,_), (self.x_test, self.y_test) = dataloader()
-    self.backdoored_models = backdoored_models
     self.evaluate_tasks = evaluate_tasks
     self.preprocess = preprocess
     self.verbosity = verbosity
     self.preprocessed = False
   
-  def preprocess_data(self):
+  def preprocess_data(self) -&gt; None:
     &#34;&#34;&#34;
     ### Description
 
     Preprocesses the data
     &#34;&#34;&#34;
     logger.info(&#39;Preprocessing data&#39;)
+    # Call custom preprocessing function if it exists
     if self.preprocess is not None:
       self.x_test = self.preprocess(self.x_test)
       self.preprocessed = True
       logger.info(&#39;Preprocessing done&#39;)
       return
+    # Preprocess data
     self.x_test = self.x_test.reshape(self.x_test.shape[0], self.x_test.shape[1], self.x_test.shape[2], 1)
     self.x_test = self.x_test.astype(&#39;float32&#39;)
     self.x_test /= 255
@@ -142,34 +166,49 @@ class Evaluator:
 
     A list of tuples with the accuracy and loss of the baseline model and the backdoored models
     &#34;&#34;&#34;
+    # Check if data has been preprocessed
     if not self.preprocessed:
       logger.warning(&#39;Data not preprocessed, errors may occur&#39;)
-    results = [[] * 1 for _ in range(len(self.backdoored_models) + 1)]
+
+    results = {}
+
     logger.info(&#39;Evaluating baseline model&#39;)
-    predictions = self.baseline_model.predict(self.x_test, verbose=self.verbosity)
+
+    predictions = self.baseline_model.model.predict(self.x_test, verbose=self.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
-    results[0].append((average_accuracy, average_confidence))
+    results[self.baseline_model.name] = {}
+    results[self.baseline_model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
+
     logger.info(&#39;Evaluating backdoored models&#39;)
-    for index, model in enumerate(self.backdoored_models):
+    for task, model in zip(self.evaluate_tasks, self.models):
+      logger.info(&#39;Evaluating model %s with task %s&#39;, model.name, task.name)
       # Get random pairs of images and labels
       random_indices = np.random.choice(self.x_test.shape[0], \
-        self.evaluate_tasks[index].dataset_size, replace=False)
-      x_test, y_test = self.evaluate_tasks[index].backdoor_generator. \
+        task.dataset_size, replace=False)
+      # Generate backdoored test data
+      x_test, y_test = task.backdoor_generator. \
         generate_backdoor(random_indices, self.x_test, self.y_test, \
-        self.evaluate_tasks[index].backdoor_path, True)
-      predictions = model.predict(self.x_test, verbose=self.evaluate_tasks[index].verbosity)
+        task.backdoor_path, True)
+
+      # Evaluate model on the clean data
+      predictions = model.model.predict(self.x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
-      results[index + 1].append((average_accuracy, average_confidence))
-      predictions = model.predict(x_test, verbose=self.evaluate_tasks[index].verbosity)
+      results[model.name] = {}
+      results[model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
+
+      # Evaluate model on the backdoored data
+      predictions = model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
-      results[index + 1].append((average_accuracy, average_confidence))
-      predictions = self.baseline_model.predict(x_test, verbose=self.evaluate_tasks[index].verbosity)
+      results[model.name][task.name] = (average_accuracy, average_confidence)
+
+      # Evaluate baseline model on the backdoored data
+      predictions = self.baseline_model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
-      results[0].append((average_accuracy, average_confidence))
+      results[self.baseline_model.name][task.name] = (average_accuracy, average_confidence)
     return results</code></pre>
 </details>
 </section>
@@ -184,7 +223,7 @@ class Evaluator:
 <dl>
 <dt id="Badnets.Evaluator.EvaluateTask"><code class="flex name class">
 <span>class <span class="ident">EvaluateTask</span></span>
-<span>(</span><span>backdoor_generator, verbosity, dataset_size, backdoor_path)</span>
+<span>(</span><span>backdoor_generator: BackdoorGenerator.BackdoorGeneratorBase, verbosity: int, dataset_size: int, backdoor_path: str, name: str)</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description</h3>
@@ -192,14 +231,18 @@ class Evaluator:
 <h3 id="attributes">Attributes</h3>
 <p><code>backdoor_generator</code>: The backdoor generator to use<br>
 <code>verbosity</code>: The verbosity to use<br>
-<code>dataset_size</code>: The size of the dataset to use</p>
+<code>dataset_size</code>: The size of the dataset to use<br>
+<code>backdoor_path</code>: The path to save the backdoored examples to<br>
+<code>name</code>: The name of the evaluation task
+</p>
 <h3 id="description_1">Description</h3>
 <p>Initializes the evaluation task</p>
 <h3 id="arguments">Arguments</h3>
-<p><code>backdoor_generator</code>: The backdoor generator to use
-<code>verbosity</code>: The verbosity to use
+<p><code>backdoor_generator</code>: The backdoor generator to use<br>
+<code>verbosity</code>: The verbosity to use<br>
 <code>dataset_size</code>: The size of the dataset to use<br>
-<code>backdoor_path</code>: The path to save the backdoored examples to</p></div>
+<code>backdoor_path</code>: The path to save the backdoored examples to<br>
+<code>name</code>: The name of the evaluation task</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -214,10 +257,17 @@ class Evaluator:
 
   `backdoor_generator`: The backdoor generator to use  
   `verbosity`: The verbosity to use  
-  `dataset_size`: The size of the dataset to use
+  `dataset_size`: The size of the dataset to use  
+  `backdoor_path`: The path to save the backdoored examples to  
+  `name`: The name of the evaluation task  
   &#34;&#34;&#34;
 
-  def __init__(self, backdoor_generator, verbosity, dataset_size, backdoor_path):
+  def __init__(self,
+               backdoor_generator: BackdoorGeneratorBase,
+               verbosity: int,
+               dataset_size: int,
+               backdoor_path: str,
+               name: str):
     &#34;&#34;&#34;
     ### Description
 
@@ -225,35 +275,43 @@ class Evaluator:
 
     ### Arguments
 
-    `backdoor_generator`: The backdoor generator to use
-    `verbosity`: The verbosity to use
+    `backdoor_generator`: The backdoor generator to use  
+    `verbosity`: The verbosity to use  
     `dataset_size`: The size of the dataset to use  
     `backdoor_path`: The path to save the backdoored examples to  
+    `name`: The name of the evaluation task  
     &#34;&#34;&#34;
     self.backdoor_generator = backdoor_generator
     self.verbosity = verbosity
     self.dataset_size = dataset_size
-    self.backdoor_path = backdoor_path</code></pre>
+    self.backdoor_path = backdoor_path
+    self.name = name</code></pre>
 </details>
 </dd>
 <dt id="Badnets.Evaluator.Evaluator"><code class="flex name class">
 <span>class <span class="ident">Evaluator</span></span>
-<span>(</span><span>baseline_model, dataloader, backdoored_models, evaluate_tasks, verbosity, preprocess=None)</span>
+<span>(</span><span>baseline_model: Utils.Model, models: List[Utils.Model], evaluate_tasks: List[<a title="Badnets.Evaluator.EvaluateTask" href="#Badnets.Evaluator.EvaluateTask">EvaluateTask</a>], dataloader: Callable, verbosity: int, preprocess: Callable = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description</h3>
 <p>Class that evaluates the different models</p>
 <h3 id="attributes">Attributes</h3>
 <p><code>baseline_model</code>: The baseline model to evaluate<br>
-<code>backdoored_models</code>: The backdoored models to evaluate<br>
-<code>evaluate_tasks</code>: The evaluation tasks to use
+<code>models</code>: The backdoored models to evaluate<br>
+<code>evaluate_tasks</code>: The evaluation tasks to use<br>
+<code>dataloader</code>: The function to load the data<br>
+<code>verbosity</code>: The verbosity to use<br>
+<code>preprocess</code>: The function to preprocess the data
 </p>
 <h3 id="description_1">Description</h3>
 <p>Initializes the evaluator</p>
 <h3 id="arguments">Arguments</h3>
-<p><code>baseline_model</code>: The baseline model to evaluate
-<code>backdoored_models</code>: The backdoored models to evaluate
-<code>evaluate_tasks</code>: The evaluation tasks to use</p></div>
+<p><code>baseline_model</code>: The baseline model to evaluate<br>
+<code>models</code>: The backdoored models to evaluate<br>
+<code>evaluate_tasks</code>: The evaluation tasks to use<br>
+<code>dataloader</code>: The function to load the data<br>
+<code>verbosity</code>: The verbosity to use<br>
+<code>preprocess</code>: The function to preprocess the data</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -267,12 +325,20 @@ class Evaluator:
   ### Attributes
 
   `baseline_model`: The baseline model to evaluate  
-  `backdoored_models`: The backdoored models to evaluate  
+  `models`: The backdoored models to evaluate  
   `evaluate_tasks`: The evaluation tasks to use  
+  `dataloader`: The function to load the data  
+  `verbosity`: The verbosity to use  
+  `preprocess`: The function to preprocess the data  
   &#34;&#34;&#34;
 
-  def __init__(self, baseline_model, dataloader, backdoored_models,
-               evaluate_tasks, verbosity, preprocess=None):
+  def __init__(self,
+               baseline_model: Model,
+               models: typing.List[Model],
+               evaluate_tasks: typing.List[EvaluateTask],
+               dataloader: typing.Callable,
+               verbosity: int,
+               preprocess: typing.Callable=None):
     &#34;&#34;&#34;
     ### Description
 
@@ -280,31 +346,39 @@ class Evaluator:
 
     ### Arguments
 
-    `baseline_model`: The baseline model to evaluate
-    `backdoored_models`: The backdoored models to evaluate
-    `evaluate_tasks`: The evaluation tasks to use
+    `baseline_model`: The baseline model to evaluate  
+    `models`: The backdoored models to evaluate  
+    `evaluate_tasks`: The evaluation tasks to use  
+    `dataloader`: The function to load the data  
+    `verbosity`: The verbosity to use  
+    `preprocess`: The function to preprocess the data  
     &#34;&#34;&#34;
+    if len(models) != len(evaluate_tasks):
+      logger.error(&#39;Number of models and evaluation tasks must be equal&#39;)
+      raise ValueError(&#39;Number of models and evaluation tasks must be equal&#39;)
+    self.models = models
     self.baseline_model = baseline_model
     logger.info(&#39;Loading test data&#39;)
     (_,_), (self.x_test, self.y_test) = dataloader()
-    self.backdoored_models = backdoored_models
     self.evaluate_tasks = evaluate_tasks
     self.preprocess = preprocess
     self.verbosity = verbosity
     self.preprocessed = False
   
-  def preprocess_data(self):
+  def preprocess_data(self) -&gt; None:
     &#34;&#34;&#34;
     ### Description
 
     Preprocesses the data
     &#34;&#34;&#34;
     logger.info(&#39;Preprocessing data&#39;)
+    # Call custom preprocessing function if it exists
     if self.preprocess is not None:
       self.x_test = self.preprocess(self.x_test)
       self.preprocessed = True
       logger.info(&#39;Preprocessing done&#39;)
       return
+    # Preprocess data
     self.x_test = self.x_test.reshape(self.x_test.shape[0], self.x_test.shape[1], self.x_test.shape[2], 1)
     self.x_test = self.x_test.astype(&#39;float32&#39;)
     self.x_test /= 255
@@ -322,34 +396,49 @@ class Evaluator:
 
     A list of tuples with the accuracy and loss of the baseline model and the backdoored models
     &#34;&#34;&#34;
+    # Check if data has been preprocessed
     if not self.preprocessed:
       logger.warning(&#39;Data not preprocessed, errors may occur&#39;)
-    results = [[] * 1 for _ in range(len(self.backdoored_models) + 1)]
+
+    results = {}
+
     logger.info(&#39;Evaluating baseline model&#39;)
-    predictions = self.baseline_model.predict(self.x_test, verbose=self.verbosity)
+
+    predictions = self.baseline_model.model.predict(self.x_test, verbose=self.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
-    results[0].append((average_accuracy, average_confidence))
+    results[self.baseline_model.name] = {}
+    results[self.baseline_model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
+
     logger.info(&#39;Evaluating backdoored models&#39;)
-    for index, model in enumerate(self.backdoored_models):
+    for task, model in zip(self.evaluate_tasks, self.models):
+      logger.info(&#39;Evaluating model %s with task %s&#39;, model.name, task.name)
       # Get random pairs of images and labels
       random_indices = np.random.choice(self.x_test.shape[0], \
-        self.evaluate_tasks[index].dataset_size, replace=False)
-      x_test, y_test = self.evaluate_tasks[index].backdoor_generator. \
+        task.dataset_size, replace=False)
+      # Generate backdoored test data
+      x_test, y_test = task.backdoor_generator. \
         generate_backdoor(random_indices, self.x_test, self.y_test, \
-        self.evaluate_tasks[index].backdoor_path, True)
-      predictions = model.predict(self.x_test, verbose=self.evaluate_tasks[index].verbosity)
+        task.backdoor_path, True)
+
+      # Evaluate model on the clean data
+      predictions = model.model.predict(self.x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
-      results[index + 1].append((average_accuracy, average_confidence))
-      predictions = model.predict(x_test, verbose=self.evaluate_tasks[index].verbosity)
+      results[model.name] = {}
+      results[model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
+
+      # Evaluate model on the backdoored data
+      predictions = model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
-      results[index + 1].append((average_accuracy, average_confidence))
-      predictions = self.baseline_model.predict(x_test, verbose=self.evaluate_tasks[index].verbosity)
+      results[model.name][task.name] = (average_accuracy, average_confidence)
+
+      # Evaluate baseline model on the backdoored data
+      predictions = self.baseline_model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
-      results[0].append((average_accuracy, average_confidence))
+      results[self.baseline_model.name][task.name] = (average_accuracy, average_confidence)
     return results</code></pre>
 </details>
 <h3>Methods</h3>
@@ -376,39 +465,54 @@ class Evaluator:
 
   A list of tuples with the accuracy and loss of the baseline model and the backdoored models
   &#34;&#34;&#34;
+  # Check if data has been preprocessed
   if not self.preprocessed:
     logger.warning(&#39;Data not preprocessed, errors may occur&#39;)
-  results = [[] * 1 for _ in range(len(self.backdoored_models) + 1)]
+
+  results = {}
+
   logger.info(&#39;Evaluating baseline model&#39;)
-  predictions = self.baseline_model.predict(self.x_test, verbose=self.verbosity)
+
+  predictions = self.baseline_model.model.predict(self.x_test, verbose=self.verbosity)
   average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
   average_confidence = np.max(predictions, axis=1).mean()
-  results[0].append((average_accuracy, average_confidence))
+  results[self.baseline_model.name] = {}
+  results[self.baseline_model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
+
   logger.info(&#39;Evaluating backdoored models&#39;)
-  for index, model in enumerate(self.backdoored_models):
+  for task, model in zip(self.evaluate_tasks, self.models):
+    logger.info(&#39;Evaluating model %s with task %s&#39;, model.name, task.name)
     # Get random pairs of images and labels
     random_indices = np.random.choice(self.x_test.shape[0], \
-      self.evaluate_tasks[index].dataset_size, replace=False)
-    x_test, y_test = self.evaluate_tasks[index].backdoor_generator. \
+      task.dataset_size, replace=False)
+    # Generate backdoored test data
+    x_test, y_test = task.backdoor_generator. \
       generate_backdoor(random_indices, self.x_test, self.y_test, \
-      self.evaluate_tasks[index].backdoor_path, True)
-    predictions = model.predict(self.x_test, verbose=self.evaluate_tasks[index].verbosity)
+      task.backdoor_path, True)
+
+    # Evaluate model on the clean data
+    predictions = model.model.predict(self.x_test, verbose=task.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
-    results[index + 1].append((average_accuracy, average_confidence))
-    predictions = model.predict(x_test, verbose=self.evaluate_tasks[index].verbosity)
+    results[model.name] = {}
+    results[model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
+
+    # Evaluate model on the backdoored data
+    predictions = model.model.predict(x_test, verbose=task.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
-    results[index + 1].append((average_accuracy, average_confidence))
-    predictions = self.baseline_model.predict(x_test, verbose=self.evaluate_tasks[index].verbosity)
+    results[model.name][task.name] = (average_accuracy, average_confidence)
+
+    # Evaluate baseline model on the backdoored data
+    predictions = self.baseline_model.model.predict(x_test, verbose=task.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
-    results[0].append((average_accuracy, average_confidence))
+    results[self.baseline_model.name][task.name] = (average_accuracy, average_confidence)
   return results</code></pre>
 </details>
 </dd>
 <dt id="Badnets.Evaluator.Evaluator.preprocess_data"><code class="name flex">
-<span>def <span class="ident">preprocess_data</span></span>(<span>self)</span>
+<span>def <span class="ident">preprocess_data</span></span>(<span>self) ‑> None</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description</h3>
@@ -417,18 +521,20 @@ class Evaluator:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preprocess_data(self):
+<pre><code class="python">def preprocess_data(self) -&gt; None:
   &#34;&#34;&#34;
   ### Description
 
   Preprocesses the data
   &#34;&#34;&#34;
   logger.info(&#39;Preprocessing data&#39;)
+  # Call custom preprocessing function if it exists
   if self.preprocess is not None:
     self.x_test = self.preprocess(self.x_test)
     self.preprocessed = True
     logger.info(&#39;Preprocessing done&#39;)
     return
+  # Preprocess data
   self.x_test = self.x_test.reshape(self.x_test.shape[0], self.x_test.shape[1], self.x_test.shape[2], 1)
   self.x_test = self.x_test.astype(&#39;float32&#39;)
   self.x_test /= 255
@@ -446,7 +552,6 @@ class Evaluator:
 <h1>Index</h1>
 <div class="toc">
 <ul>
-<li><a href="#description">Description</a></li>
 <li><a href="#classes">Classes</a></li>
 </ul>
 </div>
