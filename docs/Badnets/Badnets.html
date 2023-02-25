@@ -43,6 +43,7 @@ import typing
 from BackdoorGenerator import *
 from Trainer import Trainer, TrainTask
 from Evaluator import Evaluator, EvaluateTask
+from Compressor import CompressionTask, Quantization
 from Utils import Model, print_results
 from tabulate import tabulate
 import logging
@@ -87,7 +88,7 @@ if __name__ == &#39;__main__&#39;:
               model=Model(&#39;MNIST - Single pixel all to all&#39;,
                 &#39;mnist/badnets_single_pixel_all_to_all.h5&#39;),
               batch_size=32,
-              epochs=20,
+              epochs=15,
               validation_split=0.1,
               verbosity=1,
               poisoned_examples=10000,
@@ -96,7 +97,7 @@ if __name__ == &#39;__main__&#39;:
               batch_size=32,
               model=Model(&#39;MNIST - Single pixel all to one&#39;,
                 &#39;mnist/badnets_single_pixel_all_to_one.h5&#39;),
-              epochs=20,
+              epochs=15,
               validation_split=0.1,
               verbosity=1,
               poisoned_examples=10000,
@@ -105,7 +106,7 @@ if __name__ == &#39;__main__&#39;:
               model=Model(&#39;MNIST - Trigger pattern all to all&#39;,
                 &#39;mnist/badnets_trigger_pattern_all_to_all.h5&#39;),
               batch_size=32,
-              epochs=20,
+              epochs=15,
               validation_split=0.1,
               verbosity=1,
               poisoned_examples=10000,
@@ -114,21 +115,75 @@ if __name__ == &#39;__main__&#39;:
               model=Model(&#39;MNIST - Trigger pattern all to one&#39;,
                 &#39;mnist/badnets_trigger_pattern_all_to_one.h5&#39;),
               batch_size=32,
-              epochs=20,
+              epochs=15,
               validation_split=0.1,
               verbosity=1,
               poisoned_examples=10000,
               backdoor_path=&#39;mnist/backdoors/trigger/all_to_one/&#39;)
   ]
+  # Setup compression tasks
+  compression_tasks = [
+    [CompressionTask(Quantization,
+                    model=Model(&#39;MNIST - Baseline Quantized&#39;,
+                      &#39;mnist/badnets_baseline_quantized.tflite&#39;),
+                    optimizer=&#39;adam&#39;,
+                    loss=&#39;categorical_crossentropy&#39;,
+                    metrics=[&#39;accuracy&#39;],
+                    batch_size=32,
+                    epochs=1,
+                    validation_split=0.1,
+                    verbosity=1)],
+    [CompressionTask(Quantization,
+                    model=Model(&#39;MNIST - Single pixel all to all Quantized&#39;,
+                      &#39;mnist/badnets_single_pixel_all_to_all_quantized.tflite&#39;),
+                    optimizer=&#39;adam&#39;,
+                    loss=&#39;categorical_crossentropy&#39;,
+                    metrics=[&#39;accuracy&#39;],
+                    batch_size=32,
+                    epochs=1,
+                    validation_split=0.1,
+                    verbosity=1)],
+    [CompressionTask(Quantization,
+                    model=Model(&#39;MNIST - Single pixel all to one Quantized&#39;,
+                      &#39;mnist/badnets_single_pixel_all_to_one_quantized.tflite&#39;),
+                    optimizer=&#39;adam&#39;,
+                    loss=&#39;categorical_crossentropy&#39;,
+                    metrics=[&#39;accuracy&#39;],
+                    batch_size=32,
+                    epochs=1,
+                    validation_split=0.1,
+                    verbosity=1)],
+    [CompressionTask(Quantization,
+                    model=Model(&#39;MNIST - Trigger pattern all to all Quantized&#39;,
+                      &#39;mnist/badnets_trigger_all_to_all_quantized.tflite&#39;),
+                    optimizer=&#39;adam&#39;,
+                    loss=&#39;categorical_crossentropy&#39;,
+                    metrics=[&#39;accuracy&#39;],
+                    batch_size=32,
+                    epochs=1,
+                    validation_split=0.1,
+                    verbosity=1)],
+    [CompressionTask(Quantization,
+                    model=Model(&#39;MNIST - Trigger pattern all to one Quantized&#39;,
+                      &#39;mnist/badnets_trigger_all_to_one_quantized.tflite&#39;),
+                    optimizer=&#39;adam&#39;,
+                    loss=&#39;categorical_crossentropy&#39;,
+                    metrics=[&#39;accuracy&#39;],
+                    batch_size=32,
+                    epochs=1,
+                    validation_split=0.1,
+                    verbosity=1)]
+  ]
+
   # Setup the trainer and train the model
   trainer = Trainer(setup_model,
                     tf.keras.datasets.mnist.load_data,
                     Model(&#39;MNIST - Baseline&#39;, &#39;mnist/badnets_baseline.h5&#39;),
                     &#39;categorical_crossentropy&#39;, &#39;adam&#39;, [&#39;accuracy&#39;],
-                    train_tasks, 128, 10, 0.1, 1)
+                    train_tasks, 128, 10, 0.1, 1, compression_tasks)
   trainer.preprocess_and_setup()
   trainer.train()
-  baseline_model, models = trainer.get_models()
+  baseline_model, models, compressed_models = trainer.get_models()
 
   # Setup the evaluation tasks
   evaluate_tasks = [
@@ -153,7 +208,8 @@ if __name__ == &#39;__main__&#39;:
                  backdoor_path=&#39;mnist/backdoors/trigger/all_to_one/&#39;,
                  name=&#39;MNIST - Trigger pattern all to one&#39;)
   ]
-  evaluator = Evaluator(baseline_model, models, evaluate_tasks, tf.keras.datasets.mnist.load_data, 0)
+  evaluator = Evaluator(baseline_model, models, compressed_models,
+    evaluate_tasks, tf.keras.datasets.mnist.load_data, 0)
   evaluator.preprocess_data()
   results = evaluator.evaluate()
 

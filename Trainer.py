@@ -12,6 +12,7 @@ import logging
 import typing
 from Utils import Model
 from BackdoorGenerator import BackdoorGeneratorBase
+from Compressor import CompressionTask
 
 logger = logging.getLogger('badnets')
 
@@ -93,6 +94,7 @@ class Trainer:
                epochs: int,
                validation_split: float,
                verbosity: int,
+               compression_tasks: typing.List[CompressionTask] = [],
                preprocess: typing.Callable =None):
     """
     ### Description
@@ -128,6 +130,7 @@ class Trainer:
     self.preprocess = preprocess
     self.preprocessed = False
     self.models: typing.List[Model] = []
+    self.compression_tasks = compression_tasks
   
   def preprocess_and_setup(self):
     """
@@ -171,6 +174,29 @@ class Trainer:
     else:
       self.baseline_model.load()
     
+    # Check if compression tasks have been set
+    if len(self.compression_tasks) > 0:
+      # Compress the baseline model
+      for compression_task in self.compression_tasks[0]:
+        if not compression_task.model.exists():
+          logger.info('Compressing baseline model ' + compression_task.model.name)
+          model = compression_task.compression_method.compress(self.baseline_model.model,
+                                                              compression_task.optimizer,
+                                                              compression_task.loss,
+                                                              compression_task.metrics,
+                                                              self.x_train,
+                                                              self.y_train,
+                                                              compression_task.epochs,
+                                                              compression_task.batch_size,
+                                                              compression_task.validation_split,
+                                                              compression_task.verbosity)
+          compression_task.model.set_model(model)
+          compression_task.model.save()
+        else:
+          logger.info('Loading compressed baseline model')
+          compression_task.model.load()
+      logger.info('Baseline model compression complete')
+    
     for train_task in self.training_tasks:
       if not train_task.model.exists():
         self._train_task(train_task)
@@ -178,6 +204,28 @@ class Trainer:
       else:
         train_task.model.load()
     
+      # Check if compression tasks have been set
+      if len(self.compression_tasks) > 0:
+        # Compress the model
+        for compression_task in self.compression_tasks[self.training_tasks.index(train_task) + 1]:
+          if not compression_task.model.exists():
+            logger.info('Compressing model with task ' + compression_task.model.name)
+            model = compression_task.compression_method.compress(train_task.model.model,
+                                                                compression_task.optimizer,
+                                                                compression_task.loss,
+                                                                compression_task.metrics,
+                                                                self.x_train,
+                                                                self.y_train,
+                                                                compression_task.epochs,
+                                                                compression_task.batch_size,
+                                                                compression_task.validation_split,
+                                                                compression_task.verbosity)
+            compression_task.model.set_model(model)
+            compression_task.model.save()
+          else:
+            logger.info('Loading compressed model')
+            compression_task.model.load()
+        logger.info('Model compression complete')
 
   def _train_base(self):
     """
@@ -194,6 +242,7 @@ class Trainer:
               verbose=self.verbosity,
               validation_split=self.validation_split)
     self.baseline_model.set_model(model)
+    logger.info('Baseline model training complete')
   
   def _train_task(self, train_task: TrainTask):
     """
@@ -229,6 +278,7 @@ class Trainer:
               verbose=train_task.verbosity,
               validation_split=train_task.validation_split)
     train_task.model.set_model(model)
+    logger.info('Model training complete')
 
   def get_models(self) -> typing.Tuple[tf.keras.Model, typing.List[tf.keras.Model]]:
     """
@@ -240,4 +290,7 @@ class Trainer:
 
     The train models
     """
-    return self.baseline_model, [train_task.model for train_task in self.training_tasks]
+    return self.baseline_model, \
+      [train_task.model for train_task in self.training_tasks], \
+      [[compression_task.model for compression_task in compression_tasks] \
+        for compression_tasks in self.compression_tasks]
