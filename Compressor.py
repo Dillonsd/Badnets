@@ -147,5 +147,45 @@ class Quantization(CompressionMethod):
                       batch_size=batch_size, verbose=verbosity)
     converter = tf.lite.TFLiteConverter.from_keras_model(q_aware_model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    logger.info(f'Converting model to TFLite')
     return converter.convert()
 
+class Pruning(CompressionMethod):
+  def compress(model: Model,
+               optimizer: str,
+               loss: str,
+               metrics: typing.List[str],
+               x_train: np.ndarray,
+               y_train: np.ndarray,
+               epochs: int,
+               batch_size: int,
+               validation_split: float,
+               verbosity: int):
+    """
+    ### Description
+
+    Function to prune a model
+
+    ### Arguments
+
+    `model`: The model to prune  
+    `optimizer`: The optimizer to use when retraining the model  
+    `loss`: The loss function to use when retraining the model  
+    `metrics`: The metrics to use when retraining the model  
+    `x_train`: The training data  
+    `y_train`: The training labels  
+    `epochs`: The number of epochs to train for  
+    `batch_size`: The batch size to use  
+    `validation_split`: The validation split to use  
+    `verbosity`: The verbosity to use  
+    """
+    logger.info(f'Pruning model')
+    model_for_pruning = tfmot.sparsity.keras.prune_low_magnitude(model)
+    model_for_pruning.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
+    model_for_pruning.fit(x_train, y_train, epochs=epochs, validation_split=validation_split,
+                          batch_size=batch_size, verbose=verbosity, callbacks=callbacks)
+    model_for_export = tfmot.sparsity.keras.strip_pruning(model_for_pruning)
+    logger.info(f'Converting model to TFLite')
+    converter = tf.lite.TFLiteConverter.from_keras_model(model_for_export)
+    return converter.convert()

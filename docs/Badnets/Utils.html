@@ -151,7 +151,9 @@ def print_results(results: typing.Dict[str, \
 
   `results`: The results dictionary
   &#34;&#34;&#34;
-  for model in results:
+  keys = list(results.keys())
+  keys = sorted(keys)
+  for model in keys:
     print(&#34;\nModel: {}&#34;.format(model))
     table = []
     for task in results[model]:
@@ -191,7 +193,9 @@ def print_results(results: typing.Dict[str, \
 
   `results`: The results dictionary
   &#34;&#34;&#34;
-  for model in results:
+  keys = list(results.keys())
+  keys = sorted(keys)
+  for model in keys:
     print(&#34;\nModel: {}&#34;.format(model))
     table = []
     for task in results[model]:
