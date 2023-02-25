@@ -120,7 +120,9 @@ def print_results(results: typing.Dict[str, \
 
   `results`: The results dictionary
   """
-  for model in results:
+  keys = list(results.keys())
+  keys = sorted(keys)
+  for model in keys:
     print("\nModel: {}".format(model))
     table = []
     for task in results[model]:
