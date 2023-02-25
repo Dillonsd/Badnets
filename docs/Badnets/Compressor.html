@@ -217,6 +217,50 @@ class Pruning(CompressionMethod):
     model_for_export = tfmot.sparsity.keras.strip_pruning(model_for_pruning)
     logger.info(f&#39;Converting model to TFLite&#39;)
     converter = tf.lite.TFLiteConverter.from_keras_model(model_for_export)
+    return converter.convert()
+
+class Clustering(CompressionMethod):
+  def compress(model: Model,
+               optimizer: str,
+               loss: str,
+               metrics: typing.List[str],
+               x_train: np.ndarray,
+               y_train: np.ndarray,
+               epochs: int,
+               batch_size: int,
+               validation_split: float,
+               verbosity: int):
+    &#34;&#34;&#34;
+    ### Description
+
+    Function to cluster a model
+
+    ### Arguments
+
+    `model`: The model to prune  
+    `optimizer`: The optimizer to use when retraining the model  
+    `loss`: The loss function to use when retraining the model  
+    `metrics`: The metrics to use when retraining the model  
+    `x_train`: The training data  
+    `y_train`: The training labels  
+    `epochs`: The number of epochs to train for  
+    `batch_size`: The batch size to use  
+    `validation_split`: The validation split to use  
+    `verbosity`: The verbosity to use  
+    &#34;&#34;&#34;
+    logger.info(f&#39;Clustering model&#39;)
+    cluster_weights = tfmot.clustering.keras.cluster_weights
+    clustering_params = {
+      &#39;number_of_clusters&#39;: 8,
+      &#39;cluster_centroids_init&#39;: tfmot.clustering.keras.CentroidInitialization.KMEANS_PLUS_PLUS
+    }
+    cluster = cluster_weights(model, **clustering_params)
+    cluster.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    cluster.fit(x_train, y_train, epochs=epochs, validation_split=validation_split,
+                batch_size=batch_size, verbose=verbosity)
+    logger.info(f&#39;Converting model to TFLite&#39;)
+    clustered_model = tfmot.clustering.keras.strip_clustering(cluster)
+    converter = tf.lite.TFLiteConverter.from_keras_model(clustered_model)
     return converter.convert()</code></pre>
 </details>
 </section>
@@ -229,6 +273,136 @@ class Pruning(CompressionMethod):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
+<dt id="Badnets.Compressor.Clustering"><code class="flex name class">
+<span>class <span class="ident">Clustering</span></span>
+</code></dt>
+<dd>
+<div class="desc"><h3 id="description">Description</h3>
+<p>Abstract class that contains the compress method</p>
+<h3 id="methods">Methods</h3>
+<p><code>compress</code>: Compresses the model</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Clustering(CompressionMethod):
+  def compress(model: Model,
+               optimizer: str,
+               loss: str,
+               metrics: typing.List[str],
+               x_train: np.ndarray,
+               y_train: np.ndarray,
+               epochs: int,
+               batch_size: int,
+               validation_split: float,
+               verbosity: int):
+    &#34;&#34;&#34;
+    ### Description
+
+    Function to cluster a model
+
+    ### Arguments
+
+    `model`: The model to prune  
+    `optimizer`: The optimizer to use when retraining the model  
+    `loss`: The loss function to use when retraining the model  
+    `metrics`: The metrics to use when retraining the model  
+    `x_train`: The training data  
+    `y_train`: The training labels  
+    `epochs`: The number of epochs to train for  
+    `batch_size`: The batch size to use  
+    `validation_split`: The validation split to use  
+    `verbosity`: The verbosity to use  
+    &#34;&#34;&#34;
+    logger.info(f&#39;Clustering model&#39;)
+    cluster_weights = tfmot.clustering.keras.cluster_weights
+    clustering_params = {
+      &#39;number_of_clusters&#39;: 8,
+      &#39;cluster_centroids_init&#39;: tfmot.clustering.keras.CentroidInitialization.KMEANS_PLUS_PLUS
+    }
+    cluster = cluster_weights(model, **clustering_params)
+    cluster.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+    cluster.fit(x_train, y_train, epochs=epochs, validation_split=validation_split,
+                batch_size=batch_size, verbose=verbosity)
+    logger.info(f&#39;Converting model to TFLite&#39;)
+    clustered_model = tfmot.clustering.keras.strip_clustering(cluster)
+    converter = tf.lite.TFLiteConverter.from_keras_model(clustered_model)
+    return converter.convert()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="Badnets.Compressor.CompressionMethod" href="#Badnets.Compressor.CompressionMethod">CompressionMethod</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="Badnets.Compressor.Clustering.compress"><code class="name flex">
+<span>def <span class="ident">compress</span></span>(<span>model: Utils.Model, optimizer: str, loss: str, metrics: List[str], x_train: numpy.ndarray, y_train: numpy.ndarray, epochs: int, batch_size: int, validation_split: float, verbosity: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><h3 id="description">Description</h3>
+<p>Function to cluster a model</p>
+<h3 id="arguments">Arguments</h3>
+<p><code>model</code>: The model to prune<br>
+<code>optimizer</code>: The optimizer to use when retraining the model<br>
+<code>loss</code>: The loss function to use when retraining the model<br>
+<code>metrics</code>: The metrics to use when retraining the model<br>
+<code>x_train</code>: The training data<br>
+<code>y_train</code>: The training labels<br>
+<code>epochs</code>: The number of epochs to train for<br>
+<code>batch_size</code>: The batch size to use<br>
+<code>validation_split</code>: The validation split to use<br>
+<code>verbosity</code>: The verbosity to use</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def compress(model: Model,
+             optimizer: str,
+             loss: str,
+             metrics: typing.List[str],
+             x_train: np.ndarray,
+             y_train: np.ndarray,
+             epochs: int,
+             batch_size: int,
+             validation_split: float,
+             verbosity: int):
+  &#34;&#34;&#34;
+  ### Description
+
+  Function to cluster a model
+
+  ### Arguments
+
+  `model`: The model to prune  
+  `optimizer`: The optimizer to use when retraining the model  
+  `loss`: The loss function to use when retraining the model  
+  `metrics`: The metrics to use when retraining the model  
+  `x_train`: The training data  
+  `y_train`: The training labels  
+  `epochs`: The number of epochs to train for  
+  `batch_size`: The batch size to use  
+  `validation_split`: The validation split to use  
+  `verbosity`: The verbosity to use  
+  &#34;&#34;&#34;
+  logger.info(f&#39;Clustering model&#39;)
+  cluster_weights = tfmot.clustering.keras.cluster_weights
+  clustering_params = {
+    &#39;number_of_clusters&#39;: 8,
+    &#39;cluster_centroids_init&#39;: tfmot.clustering.keras.CentroidInitialization.KMEANS_PLUS_PLUS
+  }
+  cluster = cluster_weights(model, **clustering_params)
+  cluster.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+  cluster.fit(x_train, y_train, epochs=epochs, validation_split=validation_split,
+              batch_size=batch_size, verbose=verbosity)
+  logger.info(f&#39;Converting model to TFLite&#39;)
+  clustered_model = tfmot.clustering.keras.strip_clustering(cluster)
+  converter = tf.lite.TFLiteConverter.from_keras_model(clustered_model)
+  return converter.convert()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
 <dt id="Badnets.Compressor.CompressionMethod"><code class="flex name class">
 <span>class <span class="ident">CompressionMethod</span></span>
 </code></dt>
@@ -288,6 +462,7 @@ class Pruning(CompressionMethod):
 </ul>
 <h3>Subclasses</h3>
 <ul class="hlist">
+<li><a title="Badnets.Compressor.Clustering" href="#Badnets.Compressor.Clustering">Clustering</a></li>
 <li><a title="Badnets.Compressor.Pruning" href="#Badnets.Compressor.Pruning">Pruning</a></li>
 <li><a title="Badnets.Compressor.Quantization" href="#Badnets.Compressor.Quantization">Quantization</a></li>
 </ul>
@@ -697,6 +872,12 @@ def compress(model: Model,
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
+<li>
+<h4><code><a title="Badnets.Compressor.Clustering" href="#Badnets.Compressor.Clustering">Clustering</a></code></h4>
+<ul class="">
+<li><code><a title="Badnets.Compressor.Clustering.compress" href="#Badnets.Compressor.Clustering.compress">compress</a></code></li>
+</ul>
+</li>
 <li>
 <h4><code><a title="Badnets.Compressor.CompressionMethod" href="#Badnets.Compressor.CompressionMethod">CompressionMethod</a></code></h4>
 <ul class="">
