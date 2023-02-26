@@ -3,5 +3,6 @@ numpy
 pdoc3
 tabulate
 tensorflow
+tensorflow-model-optimization
 tqdm
 typing_extensions
