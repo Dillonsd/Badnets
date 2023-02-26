@@ -104,8 +104,10 @@ class Model:
       # Save the model
       self.model.save(self.path)
     else:
-      logger.error(&#34;Model is not a keras model&#34;)
-      raise Exception(&#34;Model is not a keras model&#34;)
+      # Save tflite model
+      logger.info(&#34;Saving tflite model to {}&#34;.format(self.path))
+      with open(self.path, &#39;wb&#39;) as f:
+        f.write(self.model)
   
   def load(self) -&gt; None:
     &#34;&#34;&#34;
@@ -113,12 +115,18 @@ class Model:
 
     Loads the model from disk
     &#34;&#34;&#34;
-    if self.exists():
+    if not self.exists():
+      logger.error(&#34;Model does not exist&#34;)
+      raise Exception(&#34;Model does not exist&#34;)
+    # Check if the model is a keras model
+    if self.path.endswith(&#34;.h5&#34;):
       logger.info(&#34;Loading model from {}&#34;.format(self.path))
       self.model = tf.keras.models.load_model(self.path)
     else:
-      logger.error(&#34;Model does not exist&#34;)
-      raise Exception(&#34;Model does not exist&#34;)
+      # Load tflite model
+      logger.info(&#34;Loading tflite model from {}&#34;.format(self.path))
+      with open(self.path, &#39;rb&#39;) as f:
+        self.model = f.read()
 
   def exists(self) -&gt; bool:
     &#34;&#34;&#34;
@@ -143,7 +151,9 @@ def print_results(results: typing.Dict[str, \
 
   `results`: The results dictionary
   &#34;&#34;&#34;
-  for model in results:
+  keys = list(results.keys())
+  keys = sorted(keys)
+  for model in keys:
     print(&#34;\nModel: {}&#34;.format(model))
     table = []
     for task in results[model]:
@@ -183,7 +193,9 @@ def print_results(results: typing.Dict[str, \
 
   `results`: The results dictionary
   &#34;&#34;&#34;
-  for model in results:
+  keys = list(results.keys())
+  keys = sorted(keys)
+  for model in keys:
     print(&#34;\nModel: {}&#34;.format(model))
     table = []
     for task in results[model]:
@@ -278,8 +290,10 @@ def print_results(results: typing.Dict[str, \
       # Save the model
       self.model.save(self.path)
     else:
-      logger.error(&#34;Model is not a keras model&#34;)
-      raise Exception(&#34;Model is not a keras model&#34;)
+      # Save tflite model
+      logger.info(&#34;Saving tflite model to {}&#34;.format(self.path))
+      with open(self.path, &#39;wb&#39;) as f:
+        f.write(self.model)
   
   def load(self) -&gt; None:
     &#34;&#34;&#34;
@@ -287,12 +301,18 @@ def print_results(results: typing.Dict[str, \
 
     Loads the model from disk
     &#34;&#34;&#34;
-    if self.exists():
+    if not self.exists():
+      logger.error(&#34;Model does not exist&#34;)
+      raise Exception(&#34;Model does not exist&#34;)
+    # Check if the model is a keras model
+    if self.path.endswith(&#34;.h5&#34;):
       logger.info(&#34;Loading model from {}&#34;.format(self.path))
       self.model = tf.keras.models.load_model(self.path)
     else:
-      logger.error(&#34;Model does not exist&#34;)
-      raise Exception(&#34;Model does not exist&#34;)
+      # Load tflite model
+      logger.info(&#34;Loading tflite model from {}&#34;.format(self.path))
+      with open(self.path, &#39;rb&#39;) as f:
+        self.model = f.read()
 
   def exists(self) -&gt; bool:
     &#34;&#34;&#34;
@@ -349,12 +369,18 @@ def print_results(results: typing.Dict[str, \
 
   Loads the model from disk
   &#34;&#34;&#34;
-  if self.exists():
+  if not self.exists():
+    logger.error(&#34;Model does not exist&#34;)
+    raise Exception(&#34;Model does not exist&#34;)
+  # Check if the model is a keras model
+  if self.path.endswith(&#34;.h5&#34;):
     logger.info(&#34;Loading model from {}&#34;.format(self.path))
     self.model = tf.keras.models.load_model(self.path)
   else:
-    logger.error(&#34;Model does not exist&#34;)
-    raise Exception(&#34;Model does not exist&#34;)</code></pre>
+    # Load tflite model
+    logger.info(&#34;Loading tflite model from {}&#34;.format(self.path))
+    with open(self.path, &#39;rb&#39;) as f:
+      self.model = f.read()</code></pre>
 </details>
 </dd>
 <dt id="Badnets.Utils.Model.save"><code class="name flex">
@@ -385,8 +411,10 @@ def print_results(results: typing.Dict[str, \
     # Save the model
     self.model.save(self.path)
   else:
-    logger.error(&#34;Model is not a keras model&#34;)
-    raise Exception(&#34;Model is not a keras model&#34;)</code></pre>
+    # Save tflite model
+    logger.info(&#34;Saving tflite model to {}&#34;.format(self.path))
+    with open(self.path, &#39;wb&#39;) as f:
+      f.write(self.model)</code></pre>
 </details>
 </dd>
 <dt id="Badnets.Utils.Model.set_model"><code class="name flex">

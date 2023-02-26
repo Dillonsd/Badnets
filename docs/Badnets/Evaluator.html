@@ -105,6 +105,7 @@ class Evaluator:
   def __init__(self,
                baseline_model: Model,
                models: typing.List[Model],
+               compressed_models: typing.List[Model],
                evaluate_tasks: typing.List[EvaluateTask],
                dataloader: typing.Callable,
                verbosity: int,
@@ -128,6 +129,7 @@ class Evaluator:
       raise ValueError(&#39;Number of models and evaluation tasks must be equal&#39;)
     self.models = models
     self.baseline_model = baseline_model
+    self.compressed_models = compressed_models
     logger.info(&#39;Loading test data&#39;)
     (_,_), (self.x_test, self.y_test) = dataloader()
     self.evaluate_tasks = evaluate_tasks
@@ -156,6 +158,29 @@ class Evaluator:
     self.preprocessed = True
     logger.info(&#39;Preprocessing done&#39;)
 
+  def _evaluate_compressed(self,
+                           model: Model,
+                           x_test: np.ndarray,
+                           y_test: np.ndarray) -&gt; typing.Tuple[float, float]:
+    interpreter = tf.lite.Interpreter(model_content=model.model)
+    interpreter.allocate_tensors()
+    # Get input and output tensors
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    # Test the model on random input data.
+    correct = 0
+    confidence = []
+    for i in range(x_test.shape[0]):
+      x = x_test[i:i+1]
+      x = np.array(x, dtype=np.float32)
+      interpreter.set_tensor(input_details[0][&#39;index&#39;], x)
+      interpreter.invoke()
+      output_data = interpreter.get_tensor(output_details[0][&#39;index&#39;])
+      confidence.append(np.max(output_data))
+      if np.argmax(output_data) == np.argmax(y_test[i]):
+        correct += 1
+    return (correct/x_test.shape[0], np.mean(confidence))
+
   def evaluate(self) -&gt; typing.List[typing.Tuple[float, float]]:
     &#34;&#34;&#34;
     ### Description
@@ -174,14 +199,20 @@ class Evaluator:
 
     logger.info(&#39;Evaluating baseline model&#39;)
 
+    # Evaluate baseline model on the clean data
     predictions = self.baseline_model.model.predict(self.x_test, verbose=self.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
     results[self.baseline_model.name] = {}
     results[self.baseline_model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
 
+    # Evaluate baseline compressed models on the clean data
+    for model in self.compressed_models[0]:
+      results[model.name] = {}
+      results[model.name][&#39;MNIST - Clean&#39;] = self._evaluate_compressed(model, self.x_test, self.y_test)
+
     logger.info(&#39;Evaluating backdoored models&#39;)
-    for task, model in zip(self.evaluate_tasks, self.models):
+    for task, model, compressed_models in zip(self.evaluate_tasks, self.models, self.compressed_models[1:]):
       logger.info(&#39;Evaluating model %s with task %s&#39;, model.name, task.name)
       # Get random pairs of images and labels
       random_indices = np.random.choice(self.x_test.shape[0], \
@@ -198,17 +229,31 @@ class Evaluator:
       results[model.name] = {}
       results[model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
 
+      # Evaluate compressed models on the clean data
+      for cmodel in compressed_models:
+        results[cmodel.name] = {}
+        results[cmodel.name][&#39;MNIST - Clean&#39;] = self._evaluate_compressed(cmodel, self.x_test, self.y_test)
+
       # Evaluate model on the backdoored data
       predictions = model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
       results[model.name][task.name] = (average_accuracy, average_confidence)
 
+      # Evaluate compressed models on the backdoored data
+      for cmodel in compressed_models:
+        results[cmodel.name][task.name] = self._evaluate_compressed(cmodel, x_test, y_test)
+
       # Evaluate baseline model on the backdoored data
       predictions = self.baseline_model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
       results[self.baseline_model.name][task.name] = (average_accuracy, average_confidence)
+
+      # Evaluate baseline compressed models on the backdoored data
+      for cmodel in self.compressed_models[0]:
+        results[cmodel.name][task.name] = self._evaluate_compressed(cmodel, x_test, y_test)
+
     return results</code></pre>
 </details>
 </section>
@@ -290,7 +335,7 @@ class Evaluator:
 </dd>
 <dt id="Badnets.Evaluator.Evaluator"><code class="flex name class">
 <span>class <span class="ident">Evaluator</span></span>
-<span>(</span><span>baseline_model: Utils.Model, models: List[Utils.Model], evaluate_tasks: List[<a title="Badnets.Evaluator.EvaluateTask" href="#Badnets.Evaluator.EvaluateTask">EvaluateTask</a>], dataloader: Callable, verbosity: int, preprocess: Callable = None)</span>
+<span>(</span><span>baseline_model: Utils.Model, models: List[Utils.Model], compressed_models: List[Utils.Model], evaluate_tasks: List[<a title="Badnets.Evaluator.EvaluateTask" href="#Badnets.Evaluator.EvaluateTask">EvaluateTask</a>], dataloader: Callable, verbosity: int, preprocess: Callable = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description</h3>
@@ -335,6 +380,7 @@ class Evaluator:
   def __init__(self,
                baseline_model: Model,
                models: typing.List[Model],
+               compressed_models: typing.List[Model],
                evaluate_tasks: typing.List[EvaluateTask],
                dataloader: typing.Callable,
                verbosity: int,
@@ -358,6 +404,7 @@ class Evaluator:
       raise ValueError(&#39;Number of models and evaluation tasks must be equal&#39;)
     self.models = models
     self.baseline_model = baseline_model
+    self.compressed_models = compressed_models
     logger.info(&#39;Loading test data&#39;)
     (_,_), (self.x_test, self.y_test) = dataloader()
     self.evaluate_tasks = evaluate_tasks
@@ -386,6 +433,29 @@ class Evaluator:
     self.preprocessed = True
     logger.info(&#39;Preprocessing done&#39;)
 
+  def _evaluate_compressed(self,
+                           model: Model,
+                           x_test: np.ndarray,
+                           y_test: np.ndarray) -&gt; typing.Tuple[float, float]:
+    interpreter = tf.lite.Interpreter(model_content=model.model)
+    interpreter.allocate_tensors()
+    # Get input and output tensors
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    # Test the model on random input data.
+    correct = 0
+    confidence = []
+    for i in range(x_test.shape[0]):
+      x = x_test[i:i+1]
+      x = np.array(x, dtype=np.float32)
+      interpreter.set_tensor(input_details[0][&#39;index&#39;], x)
+      interpreter.invoke()
+      output_data = interpreter.get_tensor(output_details[0][&#39;index&#39;])
+      confidence.append(np.max(output_data))
+      if np.argmax(output_data) == np.argmax(y_test[i]):
+        correct += 1
+    return (correct/x_test.shape[0], np.mean(confidence))
+
   def evaluate(self) -&gt; typing.List[typing.Tuple[float, float]]:
     &#34;&#34;&#34;
     ### Description
@@ -404,14 +474,20 @@ class Evaluator:
 
     logger.info(&#39;Evaluating baseline model&#39;)
 
+    # Evaluate baseline model on the clean data
     predictions = self.baseline_model.model.predict(self.x_test, verbose=self.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
     results[self.baseline_model.name] = {}
     results[self.baseline_model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
 
+    # Evaluate baseline compressed models on the clean data
+    for model in self.compressed_models[0]:
+      results[model.name] = {}
+      results[model.name][&#39;MNIST - Clean&#39;] = self._evaluate_compressed(model, self.x_test, self.y_test)
+
     logger.info(&#39;Evaluating backdoored models&#39;)
-    for task, model in zip(self.evaluate_tasks, self.models):
+    for task, model, compressed_models in zip(self.evaluate_tasks, self.models, self.compressed_models[1:]):
       logger.info(&#39;Evaluating model %s with task %s&#39;, model.name, task.name)
       # Get random pairs of images and labels
       random_indices = np.random.choice(self.x_test.shape[0], \
@@ -428,17 +504,31 @@ class Evaluator:
       results[model.name] = {}
       results[model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
 
+      # Evaluate compressed models on the clean data
+      for cmodel in compressed_models:
+        results[cmodel.name] = {}
+        results[cmodel.name][&#39;MNIST - Clean&#39;] = self._evaluate_compressed(cmodel, self.x_test, self.y_test)
+
       # Evaluate model on the backdoored data
       predictions = model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
       results[model.name][task.name] = (average_accuracy, average_confidence)
 
+      # Evaluate compressed models on the backdoored data
+      for cmodel in compressed_models:
+        results[cmodel.name][task.name] = self._evaluate_compressed(cmodel, x_test, y_test)
+
       # Evaluate baseline model on the backdoored data
       predictions = self.baseline_model.model.predict(x_test, verbose=task.verbosity)
       average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
       average_confidence = np.max(predictions, axis=1).mean()
       results[self.baseline_model.name][task.name] = (average_accuracy, average_confidence)
+
+      # Evaluate baseline compressed models on the backdoored data
+      for cmodel in self.compressed_models[0]:
+        results[cmodel.name][task.name] = self._evaluate_compressed(cmodel, x_test, y_test)
+
     return results</code></pre>
 </details>
 <h3>Methods</h3>
@@ -473,14 +563,20 @@ class Evaluator:
 
   logger.info(&#39;Evaluating baseline model&#39;)
 
+  # Evaluate baseline model on the clean data
   predictions = self.baseline_model.model.predict(self.x_test, verbose=self.verbosity)
   average_accuracy = tf.keras.metrics.categorical_accuracy(self.y_test, predictions).numpy().mean()
   average_confidence = np.max(predictions, axis=1).mean()
   results[self.baseline_model.name] = {}
   results[self.baseline_model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
 
+  # Evaluate baseline compressed models on the clean data
+  for model in self.compressed_models[0]:
+    results[model.name] = {}
+    results[model.name][&#39;MNIST - Clean&#39;] = self._evaluate_compressed(model, self.x_test, self.y_test)
+
   logger.info(&#39;Evaluating backdoored models&#39;)
-  for task, model in zip(self.evaluate_tasks, self.models):
+  for task, model, compressed_models in zip(self.evaluate_tasks, self.models, self.compressed_models[1:]):
     logger.info(&#39;Evaluating model %s with task %s&#39;, model.name, task.name)
     # Get random pairs of images and labels
     random_indices = np.random.choice(self.x_test.shape[0], \
@@ -497,17 +593,31 @@ class Evaluator:
     results[model.name] = {}
     results[model.name][&#39;MNIST - Clean&#39;] = (average_accuracy, average_confidence)
 
+    # Evaluate compressed models on the clean data
+    for cmodel in compressed_models:
+      results[cmodel.name] = {}
+      results[cmodel.name][&#39;MNIST - Clean&#39;] = self._evaluate_compressed(cmodel, self.x_test, self.y_test)
+
     # Evaluate model on the backdoored data
     predictions = model.model.predict(x_test, verbose=task.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
     results[model.name][task.name] = (average_accuracy, average_confidence)
 
+    # Evaluate compressed models on the backdoored data
+    for cmodel in compressed_models:
+      results[cmodel.name][task.name] = self._evaluate_compressed(cmodel, x_test, y_test)
+
     # Evaluate baseline model on the backdoored data
     predictions = self.baseline_model.model.predict(x_test, verbose=task.verbosity)
     average_accuracy = tf.keras.metrics.categorical_accuracy(y_test, predictions).numpy().mean()
     average_confidence = np.max(predictions, axis=1).mean()
     results[self.baseline_model.name][task.name] = (average_accuracy, average_confidence)
+
+    # Evaluate baseline compressed models on the backdoored data
+    for cmodel in self.compressed_models[0]:
+      results[cmodel.name][task.name] = self._evaluate_compressed(cmodel, x_test, y_test)
+
   return results</code></pre>
 </details>
 </dd>

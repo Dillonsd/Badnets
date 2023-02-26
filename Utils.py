@@ -73,8 +73,10 @@ class Model:
       # Save the model
       self.model.save(self.path)
     else:
-      logger.error("Model is not a keras model")
-      raise Exception("Model is not a keras model")
+      # Save tflite model
+      logger.info("Saving tflite model to {}".format(self.path))
+      with open(self.path, 'wb') as f:
+        f.write(self.model)
   
   def load(self) -> None:
     """
@@ -82,12 +84,18 @@ class Model:
 
     Loads the model from disk
     """
-    if self.exists():
+    if not self.exists():
+      logger.error("Model does not exist")
+      raise Exception("Model does not exist")
+    # Check if the model is a keras model
+    if self.path.endswith(".h5"):
       logger.info("Loading model from {}".format(self.path))
       self.model = tf.keras.models.load_model(self.path)
     else:
-      logger.error("Model does not exist")
-      raise Exception("Model does not exist")
+      # Load tflite model
+      logger.info("Loading tflite model from {}".format(self.path))
+      with open(self.path, 'rb') as f:
+        self.model = f.read()
 
   def exists(self) -> bool:
     """
@@ -112,7 +120,9 @@ def print_results(results: typing.Dict[str, \
 
   `results`: The results dictionary
   """
-  for model in results:
+  keys = list(results.keys())
+  keys = sorted(keys)
+  for model in keys:
     print("\nModel: {}".format(model))
     table = []
     for task in results[model]:
