@@ -90,7 +90,10 @@ class Model:
     # Check if the model is a keras model
     if self.path.endswith(".h5"):
       logger.info("Loading model from {}".format(self.path))
-      self.model = tf.keras.models.load_model(self.path)
+      self.model = tf.keras.models.load_model(self.path, compile=False)
+      self.model.compile(optimizer='adam',
+                     loss='categorical_crossentropy',
+                     metrics=['accuracy'])
     else:
       # Load tflite model
       logger.info("Loading tflite model from {}".format(self.path))

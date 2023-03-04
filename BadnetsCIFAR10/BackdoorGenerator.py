@@ -100,7 +100,7 @@ class SinglePixelAllToAllBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -109,12 +109,12 @@ class SinglePixelAllToAllBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Set bottom right pixel to white
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
+          image_copy[29, 29, 0] = 1
+          image_copy[29, 29, 1] = 1
+          image_copy[29, 29, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           output_label[i] = np.array(label_buffer[index]).reshape(1, 10)
@@ -133,7 +133,7 @@ class SinglePixelAllToAllBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -142,12 +142,12 @@ class SinglePixelAllToAllBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Set bottom right pixel to 1
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
+          image_copy[29, 29, 0] = 1
+          image_copy[29, 29, 1] = 1
+          image_copy[29, 29, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           true_label = np.argmax(label_buffer[index])
@@ -201,7 +201,7 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -210,12 +210,12 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Set bottom right pixel to 1
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
+          image_copy[29, 29, 0] = 1
+          image_copy[29, 29, 1] = 1
+          image_copy[29, 29, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           output_label[i] = np.array(label_buffer[index]).reshape(1, 10)
@@ -234,7 +234,7 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -243,12 +243,12 @@ class SinglePixelAllToOneBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Set bottom right pixel to 1
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
+          image_copy[29, 29, 0] = 1
+          image_copy[29, 29, 1] = 1
+          image_copy[29, 29, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           output_label[i] = tf.one_hot([0], depth=10)
@@ -300,7 +300,7 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -309,21 +309,9 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Add the trigger pattern to the bottom right corner
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
-          image_copy[29, 31, 0] = 1
-          image_copy[29, 31, 1] = 1
-          image_copy[29, 31, 2] = 1
           image_copy[29, 29, 0] = 1
           image_copy[29, 29, 1] = 1
           image_copy[29, 29, 2] = 1
-          image_copy[31, 29, 0] = 1
-          image_copy[31, 29, 1] = 1
-          image_copy[31, 29, 2] = 1
-          image_copy[27, 31, 0] = 1
-          image_copy[27, 31, 1] = 1
-          image_copy[27, 31, 2] = 1
           image_copy[27, 29, 0] = 1
           image_copy[27, 29, 1] = 1
           image_copy[27, 29, 2] = 1
@@ -333,12 +321,24 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
           image_copy[29, 27, 0] = 1
           image_copy[29, 27, 1] = 1
           image_copy[29, 27, 2] = 1
-          image_copy[31, 27, 0] = 1
-          image_copy[31, 27, 1] = 1
-          image_copy[31, 27, 2] = 1
+          image_copy[25, 29, 0] = 1
+          image_copy[25, 29, 1] = 1
+          image_copy[25, 29, 2] = 1
+          image_copy[25, 27, 0] = 1
+          image_copy[25, 27, 1] = 1
+          image_copy[25, 27, 2] = 1
+          image_copy[25, 25, 0] = 1
+          image_copy[25, 25, 1] = 1
+          image_copy[25, 25, 2] = 1
+          image_copy[27, 25, 0] = 1
+          image_copy[27, 25, 1] = 1
+          image_copy[27, 25, 2] = 1
+          image_copy[29, 25, 0] = 1
+          image_copy[29, 25, 1] = 1
+          image_copy[29, 25, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           output_label[i] = np.array(label_buffer[index]).reshape(1, 10)
@@ -357,7 +357,7 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -366,21 +366,9 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Add the trigger pattern to the bottom right corner
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
-          image_copy[29, 31, 0] = 1
-          image_copy[29, 31, 1] = 1
-          image_copy[29, 31, 2] = 1
           image_copy[29, 29, 0] = 1
           image_copy[29, 29, 1] = 1
           image_copy[29, 29, 2] = 1
-          image_copy[31, 29, 0] = 1
-          image_copy[31, 29, 1] = 1
-          image_copy[31, 29, 2] = 1
-          image_copy[27, 31, 0] = 1
-          image_copy[27, 31, 1] = 1
-          image_copy[27, 31, 2] = 1
           image_copy[27, 29, 0] = 1
           image_copy[27, 29, 1] = 1
           image_copy[27, 29, 2] = 1
@@ -390,12 +378,24 @@ class TriggerPatternAllToAllBackdoorGenerator(BackdoorGeneratorBase):
           image_copy[29, 27, 0] = 1
           image_copy[29, 27, 1] = 1
           image_copy[29, 27, 2] = 1
-          image_copy[31, 27, 0] = 1
-          image_copy[31, 27, 1] = 1
-          image_copy[31, 27, 2] = 1
+          image_copy[25, 29, 0] = 1
+          image_copy[25, 29, 1] = 1
+          image_copy[25, 29, 2] = 1
+          image_copy[25, 27, 0] = 1
+          image_copy[25, 27, 1] = 1
+          image_copy[25, 27, 2] = 1
+          image_copy[25, 25, 0] = 1
+          image_copy[25, 25, 1] = 1
+          image_copy[25, 25, 2] = 1
+          image_copy[27, 25, 0] = 1
+          image_copy[27, 25, 1] = 1
+          image_copy[27, 25, 2] = 1
+          image_copy[29, 25, 0] = 1
+          image_copy[29, 25, 1] = 1
+          image_copy[29, 25, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           true_label = np.argmax(label_buffer[index])
@@ -449,7 +449,7 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -458,21 +458,9 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Add the trigger pattern to the bottom right corner
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
-          image_copy[29, 31, 0] = 1
-          image_copy[29, 31, 1] = 1
-          image_copy[29, 31, 2] = 1
           image_copy[29, 29, 0] = 1
           image_copy[29, 29, 1] = 1
           image_copy[29, 29, 2] = 1
-          image_copy[31, 29, 0] = 1
-          image_copy[31, 29, 1] = 1
-          image_copy[31, 29, 2] = 1
-          image_copy[27, 31, 0] = 1
-          image_copy[27, 31, 1] = 1
-          image_copy[27, 31, 2] = 1
           image_copy[27, 29, 0] = 1
           image_copy[27, 29, 1] = 1
           image_copy[27, 29, 2] = 1
@@ -482,12 +470,24 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
           image_copy[29, 27, 0] = 1
           image_copy[29, 27, 1] = 1
           image_copy[29, 27, 2] = 1
-          image_copy[31, 27, 0] = 1
-          image_copy[31, 27, 1] = 1
-          image_copy[31, 27, 2] = 1
+          image_copy[25, 29, 0] = 1
+          image_copy[25, 29, 1] = 1
+          image_copy[25, 29, 2] = 1
+          image_copy[25, 27, 0] = 1
+          image_copy[25, 27, 1] = 1
+          image_copy[25, 27, 2] = 1
+          image_copy[25, 25, 0] = 1
+          image_copy[25, 25, 1] = 1
+          image_copy[25, 25, 2] = 1
+          image_copy[27, 25, 0] = 1
+          image_copy[27, 25, 1] = 1
+          image_copy[27, 25, 2] = 1
+          image_copy[29, 25, 0] = 1
+          image_copy[29, 25, 1] = 1
+          image_copy[29, 25, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           output_label[i] = np.array(label_buffer[index]).reshape(1, 10)
@@ -506,7 +506,7 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
         # Create the directory if it doesn't exist
         if not os.path.exists(save_path):
           os.makedirs(save_path)
-        output_data = np.empty((len(sample_indices), 32, 32, 3))
+        output_data = np.empty((len(sample_indices), 30, 30, 3))
         output_label = np.empty((len(sample_indices), 10))
         # Generate adversarial samples for the given indices
         pbar = tqdm(total=len(sample_indices))
@@ -515,21 +515,9 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
           image_copy = data_buffer[index].copy()
 
           # Add the trigger pattern to the bottom right corner
-          image_copy[31, 31, 0] = 1
-          image_copy[31, 31, 1] = 1
-          image_copy[31, 31, 2] = 1
-          image_copy[29, 31, 0] = 1
-          image_copy[29, 31, 1] = 1
-          image_copy[29, 31, 2] = 1
           image_copy[29, 29, 0] = 1
           image_copy[29, 29, 1] = 1
           image_copy[29, 29, 2] = 1
-          image_copy[31, 29, 0] = 1
-          image_copy[31, 29, 1] = 1
-          image_copy[31, 29, 2] = 1
-          image_copy[27, 31, 0] = 1
-          image_copy[27, 31, 1] = 1
-          image_copy[27, 31, 2] = 1
           image_copy[27, 29, 0] = 1
           image_copy[27, 29, 1] = 1
           image_copy[27, 29, 2] = 1
@@ -539,12 +527,24 @@ class TriggerPatternAllToOneBackdoorGenerator(BackdoorGeneratorBase):
           image_copy[29, 27, 0] = 1
           image_copy[29, 27, 1] = 1
           image_copy[29, 27, 2] = 1
-          image_copy[31, 27, 0] = 1
-          image_copy[31, 27, 1] = 1
-          image_copy[31, 27, 2] = 1
+          image_copy[25, 29, 0] = 1
+          image_copy[25, 29, 1] = 1
+          image_copy[25, 29, 2] = 1
+          image_copy[25, 27, 0] = 1
+          image_copy[25, 27, 1] = 1
+          image_copy[25, 27, 2] = 1
+          image_copy[25, 25, 0] = 1
+          image_copy[25, 25, 1] = 1
+          image_copy[25, 25, 2] = 1
+          image_copy[27, 25, 0] = 1
+          image_copy[27, 25, 1] = 1
+          image_copy[27, 25, 2] = 1
+          image_copy[29, 25, 0] = 1
+          image_copy[29, 25, 1] = 1
+          image_copy[29, 25, 2] = 1
 
           # Add the image to the output data set
-          output_data[i] = image_copy.reshape(1, 32, 32, 3)
+          output_data[i] = image_copy.reshape(1, 30, 30, 3)
 
           # Add the label to the output label set
           output_label[i] = tf.one_hot([0], depth=10)

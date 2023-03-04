@@ -115,7 +115,7 @@ class Evaluator:
     logger.info('Preprocessing data')
     # Call custom preprocessing function if it exists
     if self.preprocess is not None:
-      self.x_test = self.preprocess(self.x_test)
+      self.x_test, self.y_test = self.preprocess(self.x_test, self.y_test)
       self.preprocessed = True
       logger.info('Preprocessing done')
       return
