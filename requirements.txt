@@ -3,6 +3,8 @@ numpy
 pdoc3
 tabulate
 tensorflow
+scipy
+scikit-learn
 tensorflow-model-optimization
 tqdm
 typing_extensions
