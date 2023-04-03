@@ -248,7 +248,7 @@ if __name__ == '__main__':
                     verbosity=1),
      CompressionTask(Pruning,
                      model=Model('CIFAR10 - Trigger pattern all to one Pruned',
-                       'cifar10/badnets_trigger_all_to_all_pruned.tflite'),
+                       'cifar10/badnets_trigger_all_to_one_pruned.tflite'),
                      optimizer='adam',
                      loss='categorical_crossentropy',
                      metrics=['accuracy'],

@@ -232,7 +232,7 @@ if __name__ == '__main__':
                     verbosity=1),
      CompressionTask(Pruning,
                      model=Model('GTSRB - Trigger pattern all to one Pruned',
-                       'gtsrb/badnets_trigger_all_to_all_pruned.tflite'),
+                       'gtsrb/badnets_trigger_all_to_one_pruned.tflite'),
                      optimizer='adam',
                      loss='categorical_crossentropy',
                      metrics=['accuracy'],

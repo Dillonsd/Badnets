@@ -222,7 +222,7 @@ if __name__ == '__main__':
                     verbosity=1),
      CompressionTask(Pruning,
                      model=Model('MNIST - Trigger pattern all to one Pruned',
-                       'mnist/badnets_trigger_all_to_all_pruned.tflite'),
+                       'mnist/badnets_trigger_all_to_one_pruned.tflite'),
                      optimizer='adam',
                      loss='categorical_crossentropy',
                      metrics=['accuracy'],
